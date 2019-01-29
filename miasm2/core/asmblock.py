@@ -169,7 +169,6 @@ class AsmBlock(object):
     def split(self, loc_db, offset):
         loc_key = loc_db.get_or_create_offset_location(offset)
         log_asmblock.debug('split at %x', offset)
-        i = -1
         offsets = [x.offset for x in self.lines]
         offset = loc_db.get_location_offset(loc_key)
         if offset not in offsets:
@@ -314,8 +313,8 @@ class AsmBlockBad(AsmBlock):
     }
 
     def __init__(self, loc_key=None, alignment=1, errno=ERROR_UNKNOWN, *args, **kwargs):
-        """Instanciate an AsmBlock_bad.
-        @loc_key, @alignement: same as AsmBlock.__init__
+        """Instantiate an AsmBlock_bad.
+        @loc_key, @alignment: same as AsmBlock.__init__
         @errno: (optional) specify a error type associated with the block
         """
         super(AsmBlockBad, self).__init__(loc_key, alignment, *args, **kwargs)
@@ -335,7 +334,7 @@ class AsmBlockBad(AsmBlock):
         raise RuntimeError("An AsmBlockBad cannot have bto")
 
     def split(self, *args, **kwargs):
-        raise RuntimeError("An AsmBlockBad cannot be splitted")
+        raise RuntimeError("An AsmBlockBad cannot be split")
 
 
 class asm_block_bad(AsmBlockBad):
@@ -487,7 +486,7 @@ class AsmCFG(DiGraph):
 
         Edges will be created for @block.bto, if destinations are already in
         this instance. If not, they will be resolved when adding these
-        aforementionned destinations.
+        aforementioned destinations.
         `self.pendings` indicates which blocks are not yet resolved.
 
         """
@@ -601,8 +600,12 @@ class AsmCFG(DiGraph):
         return self._pendings
 
     def label2block(self, loc_key):
-        """Return the block corresponding to loc_key @loc_key
-        @loc_key: LocKey instance"""
+        """
+        DEPRECATED: Use "loc_key_to_block" instead of "label2block"
+
+        Return the block corresponding to loc_key @loc_key
+        @loc_key: LocKey instance
+        """
         warnings.warn('DEPRECATION WARNING: use "loc_key_to_block" instead of "label2block"')
         return self.loc_key_to_block(loc_key)
 
@@ -792,7 +795,7 @@ class AsmCFG(DiGraph):
                 if not (off > range_start and off < range_stop):
                     continue
 
-                # `cur_block` must be splitted at offset `off`from miasm2.core.locationdb import LocationDB
+                # `cur_block` must be split at offset `off`from miasm2.core.locationdb import LocationDB
 
                 new_b = cur_block.split(loc_db, off)
                 log_asmblock.debug("Split block %x", off)
@@ -1250,7 +1253,7 @@ def asmblock_final(mnemo, asmcfg, blockChains, loc_db, conservative=False):
             chain.fix_blocks(modified_loc_keys)
 
         for loc_key in modified_loc_keys:
-            # Retrive block with modified reference
+            # Retrieve block with modified reference
             mod_block = asmcfg.loc_key_to_block(loc_key)
             if mod_block is not None:
                 blocks_to_rework.add(mod_block)
@@ -1340,7 +1343,7 @@ class disasmEngine(object):
     """
 
     def __init__(self, arch, attrib, bin_stream, **kwargs):
-        """Instanciate a new disassembly engine
+        """Instantiate a new disassembly engine
         @arch: targeted architecture
         @attrib: architecture attribute
         @bin_stream: bytes source
@@ -1466,16 +1469,12 @@ class disasmEngine(object):
                 break
 
             # XXX TODO nul start block option
-            if self.dont_dis_nulstart_bloc and instr.b.count('\x00') == instr.l:
+            if (self.dont_dis_nulstart_bloc and
+                not cur_block.lines and
+                instr.b.count('\x00') == instr.l):
                 log_asmblock.warning("reach nul instr at %X", int(off_i))
-                if not cur_block.lines:
-                    # Block is empty -> bad block
-                    cur_block = AsmBlockBad(loc_key, errno=AsmBlockBad.ERROR_NULL_STARTING_BLOCK)
-                else:
-                    # Block is not empty, stop the desassembly pass and add a
-                    # constraint to the next block
-                    loc_key_cst = self.loc_db.get_or_create_offset_location(off_i)
-                    cur_block.add_cst(loc_key_cst, AsmConstraint.c_next)
+                # Block is empty -> bad block
+                cur_block = AsmBlockBad(loc_key, errno=AsmBlockBad.ERROR_NULL_STARTING_BLOCK)
                 break
 
             # special case: flow graph modificator in delayslot

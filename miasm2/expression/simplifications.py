@@ -37,6 +37,7 @@ class ExpressionSimplifier(object):
             simplifications_common.simp_cst_propagation,
             simplifications_common.simp_cond_op_int,
             simplifications_common.simp_cond_factor,
+            simplifications_common.simp_add_multiple,
             # CC op
             simplifications_common.simp_cc_conds,
             simplifications_common.simp_subwc_cf,
@@ -45,20 +46,35 @@ class ExpressionSimplifier(object):
             simplifications_common.simp_double_zeroext,
             simplifications_common.simp_double_signext,
             simplifications_common.simp_zeroext_eq_cst,
+            simplifications_common.simp_ext_eq_ext,
+
+            simplifications_common.simp_cmp_int,
+            simplifications_common.simp_sign_inf_zeroext,
+            simplifications_common.simp_cmp_int_int,
+            simplifications_common.simp_ext_cst,
+            simplifications_common.simp_zeroext_and_cst_eq_cst,
+            simplifications_common.simp_test_signext_inf,
+            simplifications_common.simp_test_zeroext_inf,
 
         ],
 
-        m2_expr.ExprSlice: [simplifications_common.simp_slice],
+        m2_expr.ExprSlice: [
+            simplifications_common.simp_slice,
+            simplifications_common.simp_slice_of_ext,
+            simplifications_common.simp_slice_of_op_ext,
+        ],
         m2_expr.ExprCompose: [simplifications_common.simp_compose],
         m2_expr.ExprCond: [
             simplifications_common.simp_cond,
+            simplifications_common.simp_cond_zeroext,
             # CC op
             simplifications_common.simp_cond_flag,
-            simplifications_common.simp_cond_int,
             simplifications_common.simp_cmp_int_arg,
 
             simplifications_common.simp_cond_eq_zero,
-
+            simplifications_common.simp_x_and_cst_eq_cst,
+            simplifications_common.simp_cond_logic_ext,
+            simplifications_common.simp_cond_sign_bit,
         ],
         m2_expr.ExprMem: [simplifications_common.simp_mem],
 
@@ -68,14 +84,18 @@ class ExpressionSimplifier(object):
     PASS_HEAVY = {}
 
     # Cond passes
-    PASS_COND = {m2_expr.ExprSlice: [simplifications_cond.expr_simp_inf_signed,
-                                     simplifications_cond.expr_simp_inf_unsigned_inversed],
-                 m2_expr.ExprOp: [simplifications_cond.exec_inf_unsigned,
-                                  simplifications_cond.exec_inf_signed,
-                                  simplifications_cond.expr_simp_inverse,
-                                  simplifications_cond.exec_equal],
-                 m2_expr.ExprCond: [simplifications_cond.expr_simp_equal]
-                 }
+    PASS_COND = {
+        m2_expr.ExprSlice: [
+            simplifications_cond.expr_simp_inf_signed,
+            simplifications_cond.expr_simp_inf_unsigned_inversed
+        ],
+        m2_expr.ExprOp: [
+            simplifications_cond.expr_simp_inverse,
+        ],
+        m2_expr.ExprCond: [
+            simplifications_cond.expr_simp_equal
+        ]
+    }
 
 
     # Available passes lists are:
@@ -98,6 +118,9 @@ class ExpressionSimplifier(object):
 
         Callback signature: Expr callback(ExpressionSimplifier, Expr)
         """
+
+        # Clear cache of simplifiied expressions when adding a new pass
+        self.simplified_exprs.clear()
 
         for k, v in passes.items():
             self.expr_simp_cb[k] = fast_unify(self.expr_simp_cb.get(k, []) + v)

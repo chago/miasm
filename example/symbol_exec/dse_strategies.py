@@ -22,7 +22,7 @@ from argparse import ArgumentParser
 from miasm2.analysis.machine import Machine
 from miasm2.jitter.csts import PAGE_READ, PAGE_WRITE
 from miasm2.analysis.dse import DSEPathConstraint
-from miasm2.expression.expression import ExprMem, ExprId, ExprInt, ExprAff
+from miasm2.expression.expression import ExprMem, ExprId, ExprInt, ExprAssign
 
 # Argument handling
 parser = ArgumentParser("DSE Example")
@@ -83,7 +83,7 @@ done = set()
 snapshot = dse.take_snapshot()
 
 # Only needed for the final output
-reachs = set()
+reaches = set()
 
 while todo:
     # Get the next candidate
@@ -102,7 +102,7 @@ while todo:
     jitter.init_run(run_addr)
 
     # Set the argument value in the jitter context
-    jitter.eval_expr(ExprAff(arg_addr, arg_value))
+    jitter.eval_expr(ExprAssign(arg_addr, arg_value))
 
     # Launch
     jitter.continue_run()
@@ -122,8 +122,8 @@ while todo:
         # Display info and update storages
         print "\tARG = %s" % sol_expr
         todo.add(sol_expr)
-        reachs.add(sol_ident)
+        reaches.add(sol_ident)
 
 print "Found %d input, to reach %d element of coverage" % (len(done),
-                                                           len(reachs))
+                                                           len(reaches))
 

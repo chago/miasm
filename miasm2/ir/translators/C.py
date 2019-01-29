@@ -77,7 +77,7 @@ class TranslatorC(Translator):
         value, int_size = int_size_to_bn(offset, 64)
         return 'bignum_from_string("%s", %d)' % (value, int_size)
 
-    def from_ExprAff(self, expr):
+    def from_ExprAssign(self, expr):
         new_dst = self.from_expr(expr.dst)
         new_src = self.from_expr(expr.src)
         return "%s = %s" % (new_dst, new_src)
@@ -92,7 +92,7 @@ class TranslatorC(Translator):
         return out
 
     def from_ExprMem(self, expr):
-        ptr = expr.arg
+        ptr = expr.ptr
         if ptr.size <= self.NATIVE_INT_MAX_SIZE:
             new_ptr = self.from_expr(ptr)
             if expr.size <= self.NATIVE_INT_MAX_SIZE:
@@ -317,7 +317,7 @@ class TranslatorC(Translator):
                         ">>>": "ror",
                         "<<<": "rol"
                     }
-                    out = "bignum_%d(%s, %d, bignum_to_uint64(%s))" % (
+                    out = "bignum_%s(%s, %d, bignum_to_uint64(%s))" % (
                         op[expr.op], arg0, expr.size, arg1
                     )
                     out = "bignum_mask(%s, %d)"% (out, expr.size)
@@ -372,7 +372,7 @@ class TranslatorC(Translator):
 
 
 
-            elif expr.op in ['idiv', 'imod']:
+            elif expr.op in ['sdiv', 'smod']:
                 arg0 = self.from_expr(expr.args[0])
                 arg1 = self.from_expr(expr.args[1])
 

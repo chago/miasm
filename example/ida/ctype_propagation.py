@@ -10,7 +10,7 @@ from miasm2.arch.x86.ctype import CTypeAMD64_unk, CTypeX86_unk
 from miasm2.arch.msp430.ctype import CTypeMSP430_unk
 from miasm2.core.objc import CTypesManagerNotPacked, ExprToAccessC, CHandler
 from miasm2.core.ctypesmngr import CAstTypes
-from miasm2.expression.expression import ExprLoc, ExprInt, ExprOp, ExprAff
+from miasm2.expression.expression import ExprLoc, ExprInt, ExprOp, ExprAssign
 from miasm2.ir.symbexec_types import SymbExecCType
 from miasm2.expression.parser import str_to_expr
 from miasm2.analysis.cst_propag import add_state, propagate_cst_expr
@@ -50,9 +50,9 @@ Analysis scope:
 <Architecture/compilator :{arch}>
 
 <##Header file          :{headerFile}>
-<Use a file for type informations:{rTypeFile}>{cTypeFile}>
-<##Types informations   :{typeFile}>
-<Types informations     :{strTypesInfo}>
+<Use a file for type information:{rTypeFile}>{cTypeFile}>
+<##Types information   :{typeFile}>
+<Types information     :{strTypesInfo}>
 
 <Unalias stack:{rUnaliasStack}>{cUnalias}>
 """, {
@@ -232,8 +232,8 @@ def get_ira_call_fixer(ira):
             print hex(stk_diff)
             call_assignblk = AssignBlock(
                 [
-                    ExprAff(self.ret_reg, ExprOp('call_func_ret', ad)),
-                    ExprAff(self.sp, self.sp + ExprInt(stk_diff, self.sp.size))
+                    ExprAssign(self.ret_reg, ExprOp('call_func_ret', ad)),
+                    ExprAssign(self.sp, self.sp + ExprInt(stk_diff, self.sp.size))
                 ],
                 instr
             )
@@ -314,8 +314,8 @@ def analyse_function():
 
     assignblk_head = AssignBlock(
         [
-            ExprAff(ir_arch.IRDst, ExprLoc(lbl_real_start, ir_arch.IRDst.size)),
-            ExprAff(ir_arch.sp, ir_arch.arch.regs.regs_init[ir_arch.sp])
+            ExprAssign(ir_arch.IRDst, ExprLoc(lbl_real_start, ir_arch.IRDst.size)),
+            ExprAssign(ir_arch.sp, ir_arch.arch.regs.regs_init[ir_arch.sp])
         ],
         first_block.lines[0]
     )
@@ -337,7 +337,7 @@ def analyse_function():
         if lbl not in ircfg.blocks:
             continue
         symbexec_engine = TypePropagationEngine(ir_arch, types_mngr, state)
-        addr = symbexec_engine.run_block_at(ircfg, lbl)
+        symbexec_engine.run_block_at(ircfg, lbl)
         symbexec_engine.del_mem_above_stack(ir_arch.sp)
 
         sons = ircfg.successors(lbl)
@@ -351,7 +351,7 @@ def analyse_function():
         if lbl not in ircfg.blocks:
             continue
         symbexec_engine = CTypeEngineFixer(ir_arch, types_mngr, state, cst_propag_link)
-        addr = symbexec_engine.run_block_at(ircfg, lbl)
+        symbexec_engine.run_block_at(ircfg, lbl)
         symbexec_engine.del_mem_above_stack(ir_arch.sp)
 
 

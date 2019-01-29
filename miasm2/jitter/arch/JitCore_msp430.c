@@ -113,8 +113,8 @@ PyObject* cpu_set_gpreg(JitCpu* self, PyObject *args)
 
 	    if (found)
 		    continue;
-	    fprintf(stderr, "unkown key: %s\n", PyString_AsString(d_key));
-	    RAISE(PyExc_ValueError, "unkown reg");
+	    fprintf(stderr, "unknown key: %s\n", PyString_AsString(d_key));
+	    RAISE(PyExc_ValueError, "unknown reg");
     }
     Py_INCREF(Py_None);
     return Py_None;
@@ -156,6 +156,11 @@ PyObject * cpu_dump_gpregs(JitCpu* self, PyObject* args)
 	dump_gpregs(vmcpu);
 	Py_INCREF(Py_None);
 	return Py_None;
+}
+
+PyObject * cpu_dump_gpregs_with_attrib(JitCpu* self, PyObject* args)
+{
+	return cpu_dump_gpregs(self, args);
 }
 
 
@@ -258,6 +263,8 @@ static PyMethodDef JitCpu_methods[] = {
 	{"init_regs", (PyCFunction)cpu_init_regs, METH_NOARGS,
 	 "X"},
 	{"dump_gpregs", (PyCFunction)cpu_dump_gpregs, METH_NOARGS,
+	 "X"},
+	{"dump_gpregs_with_attrib", (PyCFunction)cpu_dump_gpregs_with_attrib, METH_VARARGS,
 	 "X"},
 	{"get_gpreg", (PyCFunction)cpu_get_gpreg, METH_NOARGS,
 	 "X"},

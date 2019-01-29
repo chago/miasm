@@ -50,7 +50,7 @@ class Z3Mem(object):
         try:
             mem = self.mems[size]
         except KeyError:
-            # Lazy instanciation
+            # Lazy instantiation
             self.mems[size] = z3.Array(self.name + str(size),
                                         z3.BitVecSort(size),
                                         z3.BitVecSort(8))
@@ -104,8 +104,8 @@ class TranslatorZ3(Translator):
     expression. Memory is abstracted via z3.Array (see Z3Mem).
     The result of from_expr will be a z3 Expr.
 
-    If you want to interract with the memory abstraction after the translation,
-    you can instanciate your own Z3Mem, that will be equivalent to the one
+    If you want to interact with the memory abstraction after the translation,
+    you can instantiate your own Z3Mem, that will be equivalent to the one
     used by TranslatorZ3.
     """
 
@@ -144,7 +144,7 @@ class TranslatorZ3(Translator):
         return z3.BitVec(str(loc_key), expr.size)
 
     def from_ExprMem(self, expr):
-        addr = self.from_expr(expr.arg)
+        addr = self.from_expr(expr.ptr)
         return self._mem.get(addr, expr.size)
 
     def from_ExprSlice(self, expr):
@@ -171,7 +171,7 @@ class TranslatorZ3(Translator):
     def _abs(self, z3_value):
         return z3.If(z3_value >= 0,z3_value,-z3_value)
 
-    def _idivC(self, num, den):
+    def _sdivC(self, num, den):
         """Divide (signed) @num by @den (z3 values) as C would
         See modint.__div__ for implementation choice
         """
@@ -197,14 +197,44 @@ class TranslatorZ3(Translator):
                     res = z3.RotateLeft(res, arg)
                 elif expr.op == ">>>":
                     res = z3.RotateRight(res, arg)
-                elif expr.op == "idiv":
-                    res = self._idivC(res, arg)
+                elif expr.op == "sdiv":
+                    res = self._sdivC(res, arg)
                 elif expr.op == "udiv":
                     res = z3.UDiv(res, arg)
-                elif expr.op == "imod":
-                    res = res - (arg * (self._idivC(res, arg)))
+                elif expr.op == "smod":
+                    res = res - (arg * (self._sdivC(res, arg)))
                 elif expr.op == "umod":
                     res = z3.URem(res, arg)
+                elif expr.op == "==":
+                    res = z3.If(
+                        args[0] == args[1],
+                        z3.BitVecVal(1, 1),
+                        z3.BitVecVal(0, 1)
+                    )
+                elif expr.op == "<u":
+                    res = z3.If(
+                        z3.ULT(args[0], args[1]),
+                        z3.BitVecVal(1, 1),
+                        z3.BitVecVal(0, 1)
+                    )
+                elif expr.op == "<s":
+                    res = z3.If(
+                        z3.SLT(args[0], args[1]),
+                        z3.BitVecVal(1, 1),
+                        z3.BitVecVal(0, 1)
+                    )
+                elif expr.op == "<=u":
+                    res = z3.If(
+                        z3.ULE(args[0], args[1]),
+                        z3.BitVecVal(1, 1),
+                        z3.BitVecVal(0, 1)
+                    )
+                elif expr.op == "<=s":
+                    res = z3.If(
+                        z3.SLE(args[0], args[1]),
+                        z3.BitVecVal(1, 1),
+                        z3.BitVecVal(0, 1)
+                    )
                 else:
                     raise NotImplementedError("Unsupported OP yet: %s" % expr.op)
         elif expr.op == 'parity':
@@ -239,7 +269,7 @@ class TranslatorZ3(Translator):
 
         return res
 
-    def from_ExprAff(self, expr):
+    def from_ExprAssign(self, expr):
         src = self.from_expr(expr.src)
         dst = self.from_expr(expr.dst)
         return (src == dst)

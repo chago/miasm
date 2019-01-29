@@ -36,7 +36,7 @@ class Container(object):
 
     @classmethod
     def from_string(cls, data, *args, **kwargs):
-        """Instanciate a container and parse the binary
+        """Instantiate a container and parse the binary
         @data: str containing the binary
         """
         log.info('Load binary')
@@ -65,7 +65,7 @@ class Container(object):
 
     @classmethod
     def from_stream(cls, stream, *args, **kwargs):
-        """Instanciate a container and parse the binary
+        """Instantiate a container and parse the binary
         @stream: stream to use as binary
         @vm: (optional) VmMngr instance to link with the executable
         @addr: (optional) Shift to apply before parsing the binary. If set,
@@ -156,7 +156,7 @@ class ContainerPE(Container):
 
         # Build the bin_stream instance and set the entry point
         try:
-            self._bin_stream = bin_stream_pe(self._executable.virt)
+            self._bin_stream = bin_stream_pe(self._executable)
             ep_detected = self._executable.Opthdr.AddressOfEntryPoint
             self._entry_point = self._executable.rva2virt(ep_detected)
         except Exception, error:
@@ -200,7 +200,7 @@ class ContainerELF(Container):
 
         # Build the bin_stream instance and set the entry point
         try:
-            self._bin_stream = bin_stream_elf(self._executable.virt)
+            self._bin_stream = bin_stream_elf(self._executable)
             self._entry_point = self._executable.Ehdr.entry + addr
         except Exception, error:
             raise ContainerParsingException('Cannot read ELF: %s' % error)

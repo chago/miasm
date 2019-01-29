@@ -51,7 +51,7 @@ class SymbolicStateCTypes(StateEngine):
 
     @property
     def symbols(self):
-        """Return the dictionnary of known symbols'types"""
+        """Return the dictionary of known symbols'types"""
         return dict(self._symbols)
 
 
@@ -95,7 +95,7 @@ class SymbExecCType(SymbolicExecutionEngine):
             elif isinstance(dst, ExprId):
                 pool_out[dst] = frozenset(objcs)
             else:
-                raise ValueError("Unsupported affectation", str(dst))
+                raise ValueError("Unsupported assignment", str(dst))
         return pool_out
 
     def eval_expr(self, expr, eval_cache=None):

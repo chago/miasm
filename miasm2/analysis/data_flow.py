@@ -3,7 +3,8 @@
 from collections import namedtuple
 from miasm2.core.graph import DiGraph
 from miasm2.ir.ir import AssignBlock, IRBlock
-from miasm2.expression.expression import ExprLoc, ExprMem, ExprId, ExprInt
+from miasm2.expression.expression import ExprLoc, ExprMem, ExprId, ExprInt,\
+    ExprAssign
 from miasm2.expression.simplifications import expr_simp
 from miasm2.core.interval import interval
 
@@ -28,7 +29,7 @@ class ReachingDefinitions(dict):
     A survey of data flow analysis techniques.
     IBM Thomas J. Watson Research Division,  Algorithm MK
 
-    This class is usable as a dictionnary whose struture is
+    This class is usable as a dictionary whose structure is
     { (block, index): { lvalue: set((block, index)) } }
     """
 
@@ -122,7 +123,7 @@ class DiGraphDefUse(DiGraph):
 
     def __init__(self, reaching_defs,
                  deref_mem=False, *args, **kwargs):
-        """Instanciate a DiGraph
+        """Instantiate a DiGraph
         @blocks: IR blocks
         """
         self._edge_attr = {}
@@ -159,7 +160,7 @@ class DiGraphDefUse(DiGraph):
 
                 read_vars = expr.get_r(mem_read=deref_mem)
                 if deref_mem and lval.is_mem():
-                    read_vars.update(lval.arg.get_r(mem_read=deref_mem))
+                    read_vars.update(lval.ptr.get_r(mem_read=deref_mem))
                 for read_var in read_vars:
                     for reach in assignblk_reaching_defs.get(read_var, set()):
                         self.add_data_edge(AssignblkNode(reach[0], reach[1], read_var),
@@ -171,7 +172,7 @@ class DiGraphDefUse(DiGraph):
 
     def add_uniq_labeled_edge(self, src, dst, edge_label):
         """Adds the edge (@src, @dst) with label @edge_label.
-        if edge (@src, @dst) already exists, the previous label is overriden
+        if edge (@src, @dst) already exists, the previous label is overridden
         """
         self.add_uniq_edge(src, dst)
         self._edge_attr[(src, dst)] = edge_label
@@ -216,7 +217,7 @@ def dead_simp_useful_assignblks(irarch, defuse, reaching_defs):
         else:
             keep_all_definitions = False
 
-        # Block has a nonexistant successor or is a leaf
+        # Block has a nonexistent successor or is a leaf
         if keep_all_definitions or (len(successors) == 0):
             valid_definitions = reaching_defs.get_definitions(block_lbl,
                                                               len(block))
@@ -242,7 +243,7 @@ def dead_simp_useful_assignblks(irarch, defuse, reaching_defs):
 
 def dead_simp(irarch, ircfg):
     """
-    Remove useless affectations.
+    Remove useless assignments.
 
     This function is used to analyse relation of a * complete function *
     This means the blocks under study represent a solid full function graph.
@@ -538,7 +539,7 @@ class SSADefUse(DiGraph):
         lbl, index, dst = node
         sources = set()
         if dst.is_mem():
-            sources.update(dst.arg.get_r(mem_read=True))
+            sources.update(dst.ptr.get_r(mem_read=True))
         sources.update(src.get_r(mem_read=True))
         for source in sources:
             if not source.is_mem():
@@ -741,7 +742,7 @@ class PropagateExpr(object):
                         continue
 
                     if src.is_mem():
-                        ptr = src.arg
+                        ptr = src.ptr
                         ptr = ptr.replace_expr(replace)
                         new_src = ExprMem(ptr, src.size)
                     else:
@@ -750,7 +751,7 @@ class PropagateExpr(object):
                     if dst.is_id():
                         new_dst = dst
                     elif dst.is_mem():
-                        ptr = dst.arg
+                        ptr = dst.ptr
                         ptr = ptr.replace_expr(replace)
                         new_dst = ExprMem(ptr, dst.size)
                     else:
@@ -787,7 +788,7 @@ def stack_to_reg(expr):
 def is_stack_access(ir_arch_a, expr):
     if not expr.is_mem():
         return False
-    ptr = expr.arg
+    ptr = expr.ptr
     diff = expr_simp(ptr - ir_arch_a.sp)
     if not diff.is_int():
         return False
@@ -819,7 +820,7 @@ def check_expr_below_stack(ir_arch_a, expr):
     @ir_arch_a: ira instance
     @expr: Expression instance
     """
-    ptr = expr.arg
+    ptr = expr.ptr
     diff = expr_simp(ptr - ir_arch_a.sp)
     if not diff.is_int():
         return True
@@ -831,7 +832,7 @@ def check_expr_below_stack(ir_arch_a, expr):
 def retrieve_stack_accesses(ir_arch_a, ssa):
     """
     Walk the ssa graph and find stack based variables.
-    Return a dictionnary linking stack base address to its size/name
+    Return a dictionary linking stack base address to its size/name
     @ir_arch_a: ira instance
     @ssa: SSADiGraph instance
     """
@@ -845,7 +846,7 @@ def retrieve_stack_accesses(ir_arch_a, ssa):
 
     base_to_var = {}
     for var in stack_vars:
-        base_to_var.setdefault(var.arg, set()).add(var)
+        base_to_var.setdefault(var.ptr, set()).add(var)
 
 
     base_to_interval = {}
@@ -881,13 +882,13 @@ def retrieve_stack_accesses(ir_arch_a, ssa):
 
 def fix_stack_vars(expr, base_to_info):
     """
-    Replace local stack accesses in expr using informations in @base_to_info
+    Replace local stack accesses in expr using information in @base_to_info
     @expr: Expression instance
-    @base_to_info: dictionnary linking stack base address to its size/name
+    @base_to_info: dictionary linking stack base address to its size/name
     """
     if not expr.is_mem():
         return expr
-    ptr = expr.arg
+    ptr = expr.ptr
     if ptr not in base_to_info:
         return expr
     size, name = base_to_info[ptr]
@@ -933,8 +934,8 @@ def replace_stack_vars(ir_arch_a, ssa):
 
 
 def memlookup_test(expr, bs, is_addr_ro_variable, result):
-    if expr.is_mem() and expr.arg.is_int():
-        ptr = int(expr.arg)
+    if expr.is_mem() and expr.ptr.is_int():
+        ptr = int(expr.ptr)
         if is_addr_ro_variable(bs, ptr, expr.size):
             result.add(expr)
         return False
@@ -953,11 +954,11 @@ def get_memlookup(expr, bs, is_addr_ro_variable):
 
 
 def read_mem(bs, expr):
-    ptr = int(expr.arg)
+    ptr = int(expr.ptr)
     var_bytes = bs.getbytes(ptr, expr.size / 8)[::-1]
     try:
         value = int(var_bytes.encode('hex'), 16)
-    except:
+    except ValueError:
         return expr
     return ExprInt(value, expr.size)
 
@@ -989,7 +990,7 @@ def load_from_int(ir_arch, bs, is_addr_ro_variable):
                         modified = True
                 # Test dst pointer if dst is mem
                 if dst.is_mem():
-                    ptr = dst.arg
+                    ptr = dst.ptr
                     mems = get_memlookup(ptr, bs, is_addr_ro_variable)
                     if mems:
                         replace = {}
@@ -1006,3 +1007,208 @@ def load_from_int(ir_arch, bs, is_addr_ro_variable):
         block = IRBlock(block.loc_key, assignblks)
         ir_arch.blocks[block.loc_key] = block
     return modified
+
+
+class AssignBlockLivenessInfos(object):
+    """
+    Description of live in / live out of an AssignBlock
+    """
+
+    __slots__ = ["gen", "kill", "var_in", "var_out", "live", "assignblk"]
+
+    def __init__(self, assignblk, gen, kill):
+        self.gen = gen
+        self.kill = kill
+        self.var_in = set()
+        self.var_out = set()
+        self.live = set()
+        self.assignblk = assignblk
+
+    def __str__(self):
+        out = []
+        out.append("\tVarIn:" + ", ".join(str(x) for x in self.var_in))
+        out.append("\tGen:" + ", ".join(str(x) for x in self.gen))
+        out.append("\tKill:" + ", ".join(str(x) for x in self.kill))
+        out.append(
+            '\n'.join(
+                "\t%s = %s" % (dst, src)
+                for (dst, src) in self.assignblk.iteritems()
+            )
+        )
+        out.append("\tVarOut:" + ", ".join(str(x) for x in self.var_out))
+        return '\n'.join(out)
+
+
+class IRBlockLivenessInfos(object):
+    """
+    Description of live in / live out of an AssignBlock
+    """
+    __slots__ = ["loc_key", "infos", "assignblks"]
+
+
+    def __init__(self, irblock):
+        self.loc_key = irblock.loc_key
+        self.infos = []
+        self.assignblks = []
+        for assignblk in irblock:
+            gens, kills = set(), set()
+            for dst, src in assignblk.iteritems():
+                expr = ExprAssign(dst, src)
+                read = expr.get_r(mem_read=True)
+                write = expr.get_w()
+                gens.update(read)
+                kills.update(write)
+            self.infos.append(AssignBlockLivenessInfos(assignblk, gens, kills))
+            self.assignblks.append(assignblk)
+
+    def __getitem__(self, index):
+        """Getitem on assignblks"""
+        return self.assignblks.__getitem__(index)
+
+    def __str__(self):
+        out = []
+        out.append("%s:" % self.loc_key)
+        for info in self.infos:
+            out.append(str(info))
+            out.append('')
+        return "\n".join(out)
+
+
+class DiGraphLiveness(DiGraph):
+    """
+    DiGraph representing variable liveness
+    """
+
+    def __init__(self, ircfg, loc_db=None):
+        super(DiGraphLiveness, self).__init__()
+        self.ircfg = ircfg
+        self.loc_db = loc_db
+        self._blocks = {}
+        # Add irblocks gen/kill
+        for node in ircfg.nodes():
+            irblock = ircfg.blocks[node]
+            irblockinfos = IRBlockLivenessInfos(irblock)
+            self.add_node(irblockinfos.loc_key)
+            self.blocks[irblockinfos.loc_key] = irblockinfos
+            for succ in ircfg.successors(node):
+                self.add_uniq_edge(node, succ)
+            for pred in ircfg.predecessors(node):
+                self.add_uniq_edge(pred, node)
+
+    @property
+    def blocks(self):
+        return self._blocks
+
+    def init_var_info(self):
+        """Add ircfg out regs"""
+        raise NotImplementedError("Abstract method")
+
+    def node2lines(self, node):
+        """
+        Output liveness information in dot format
+        """
+        if self.loc_db is None:
+            node_name = str(node)
+        else:
+            names = self.loc_db.get_location_names(node)
+            if not names:
+                node_name = self.loc_db.pretty_str(node)
+            else:
+                node_name = "".join("%s:\n" % name for name in names)
+        yield self.DotCellDescription(
+            text="%s" % node_name,
+            attr={
+                'align': 'center',
+                'colspan': 2,
+                'bgcolor': 'grey',
+            }
+        )
+        if node not in self._blocks:
+            yield [self.DotCellDescription(text="NOT PRESENT", attr={})]
+            raise StopIteration
+
+        for i, info in enumerate(self._blocks[node].infos):
+            var_in = "VarIn:" + ", ".join(str(x) for x in info.var_in)
+            var_out = "VarOut:" + ", ".join(str(x) for x in info.var_out)
+
+            assignmnts = ["%s = %s" % (dst, src) for (dst, src) in info.assignblk.iteritems()]
+
+            if i == 0:
+                yield self.DotCellDescription(
+                    text=var_in,
+                    attr={
+                        'bgcolor': 'green',
+                    }
+                )
+
+            for assign in assignmnts:
+                yield self.DotCellDescription(text=assign, attr={})
+            yield self.DotCellDescription(
+                text=var_out,
+                attr={
+                    'bgcolor': 'green',
+                }
+            )
+            yield self.DotCellDescription(text="", attr={})
+
+    def back_propagate_compute(self, block):
+        """
+        Compute the liveness information in the @block.
+        @block: AssignBlockLivenessInfos instance
+        """
+        infos = block.infos
+        modified = False
+        for i in reversed(xrange(len(infos))):
+            new_vars = set(infos[i].gen.union(infos[i].var_out.difference(infos[i].kill)))
+            if infos[i].var_in != new_vars:
+                modified = True
+                infos[i].var_in = new_vars
+            if i > 0 and infos[i - 1].var_out != set(infos[i].var_in):
+                modified = True
+                infos[i - 1].var_out = set(infos[i].var_in)
+        return modified
+
+    def back_propagate_to_parent(self, todo, node, parent):
+        """
+        Back propagate the liveness information from @node to @parent.
+        @node: loc_key of the source node
+        @parent: loc_key of the node to update
+        """
+        parent_block = self.blocks[parent]
+        cur_block = self.blocks[node]
+        if cur_block.infos[0].var_in == parent_block.infos[-1].var_out:
+            return
+        var_info = cur_block.infos[0].var_in.union(parent_block.infos[-1].var_out)
+        parent_block.infos[-1].var_out = var_info
+        todo.add(parent)
+
+    def compute_liveness(self):
+        """
+        Compute the liveness information for the digraph.
+        """
+        todo = set(self.leaves())
+        while todo:
+            node = todo.pop()
+            cur_block = self.blocks[node]
+            modified = self.back_propagate_compute(cur_block)
+            if not modified:
+                continue
+            # We modified parent in, propagate to parents
+            for pred in self.predecessors(node):
+                self.back_propagate_to_parent(todo, node, pred)
+        return True
+
+
+class DiGraphLivenessIRA(DiGraphLiveness):
+    """
+    DiGraph representing variable liveness for IRA
+    """
+
+    def init_var_info(self, ir_arch_a):
+        """Add ircfg out regs"""
+
+        for node in self.leaves():
+            irblock = self.ircfg.blocks[node]
+            var_out = ir_arch_a.get_out_regs(irblock)
+            irblock_liveness = self.blocks[node]
+            irblock_liveness.infos[-1].var_out = var_out

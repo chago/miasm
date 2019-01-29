@@ -385,7 +385,7 @@ class instruction_arm(instruction):
         if not isinstance(expr, ExprMem):
             return str(expr)
 
-        expr = expr.arg
+        expr = expr.ptr
         if isinstance(expr, ExprOp) and expr.op == 'wback':
             wb = True
             expr = expr.args[0]
@@ -608,7 +608,7 @@ class mn_arm(cls_mn):
             return 0
         o = 0
         if n > bs.getlen() * 8:
-            raise ValueError('not enought bits %r %r' % (n, len(bs.bin) * 8))
+            raise ValueError('not enough bits %r %r' % (n, len(bs.bin) * 8))
         while n:
             offset = start / 8
             n_offset = cls.endian_offset(attrib, offset)
@@ -709,7 +709,7 @@ class mn_armt(cls_mn):
             return 0
         o = 0
         if n > bs.getlen() * 8:
-            raise ValueError('not enought bits %r %r' % (n, len(bs.bin) * 8))
+            raise ValueError('not enough bits %r %r' % (n, len(bs.bin) * 8))
         while n:
             offset = start / 8
             n_offset = cls.endian_offset(attrib, offset)
@@ -946,7 +946,7 @@ class arm_imm8_12(arm_arg):
         e = self.expr
         if not isinstance(e, ExprMem):
             return False
-        e = e.arg
+        e = e.ptr
         if isinstance(e, ExprOp) and e.op == 'wback':
             self.parent.wback.value = 1
             e = e.args[0]
@@ -1171,7 +1171,7 @@ class arm_op2imm(arm_imm8_12):
 
         e = self.expr
         assert(isinstance(e, ExprMem))
-        e = e.arg
+        e = e.ptr
         if e.op == 'wback':
             self.parent.wback.value = 1
             e = e.args[0]
@@ -1481,7 +1481,7 @@ class arm_immed(arm_arg):
         e = self.expr
         if not isinstance(e, ExprMem):
             return False
-        e = e.arg
+        e = e.ptr
         if isinstance(e, ExprOp) and e.op == 'wback':
             self.parent.wback.value = 1
             e = e.args[0]
@@ -1570,7 +1570,7 @@ class arm_mem_rn_imm(arm_arg):
         expr = self.expr
         if not isinstance(expr, ExprMem):
             return False
-        ptr = expr.arg
+        ptr = expr.ptr
         if ptr in gpregs.expr:
             self.value = gpregs.expr.index(ptr)
         elif (isinstance(ptr, ExprOp) and
@@ -1865,7 +1865,7 @@ class arm_offpc(arm_offreg):
         else:
             self.expr = ExprMem(self.off_reg, 32)
 
-        e = self.expr.arg
+        e = self.expr.ptr
         if isinstance(e, ExprOp) and e.op == 'wback':
             self.parent.wback.value = 1
             e = e.args[0]
@@ -1875,7 +1875,7 @@ class arm_offpc(arm_offreg):
         e = self.expr
         if not isinstance(e, ExprMem):
             return False
-        e = e.arg
+        e = e.ptr
         if not (isinstance(e, ExprOp) and e.op == "preinc"):
             log.debug('cannot encode %r', e)
             return False
@@ -1949,7 +1949,7 @@ class arm_deref_reg_imm(arm_arg):
         e = self.expr
         if not isinstance(e, ExprMem):
             return False
-        e = e.arg
+        e = e.ptr
         if not (isinstance(e, ExprOp) and e.op == 'preinc'):
             log.debug('cannot encode %r', e)
             return False
@@ -2373,17 +2373,21 @@ armtop("addsp", [bs('10110000'), bs_addsubsp_name, sp, off7], [sp, off7])
 armtop("pushpop", [bs('1011'), bs_pushpop_name, bs('10'), pclr, trlistpclr], [trlistpclr])
 armtop("btransfersp", [bs('1100'),  bs_tbtransfer_name, rbl_wb, trlist])
 armtop("br", [bs('1101'),  bs_br_name, offs8])
-armtop("blx", [bs("01000111"),  bs('10'), rnl, bs('000')])
+armtop("blx", [bs("01000111"),  bs('1'), rm, bs('000')])
 armtop("svc", [bs('11011111'),  imm8])
 armtop("b", [bs('11100'),  offs11])
 armtop("und", [bs('1101'), bs('1110'), imm8_d1])
 
-armtop("rev",  [bs('10111010'), bs('00'), rsl, rdl], [rdl, rsl])
+armtop("rev",    [bs('10111010'), bs('00'), rsl, rdl], [rdl, rsl])
+armtop("rev16",  [bs('10111010'), bs('01'), rsl, rdl], [rdl, rsl])
 
 armtop("uxtb", [bs('10110010'), bs('11'), rml, rdl], [rdl, rml])
 armtop("uxth", [bs('10110010'), bs('10'), rml, rdl], [rdl, rml])
 armtop("sxtb", [bs('10110010'), bs('01'), rml, rdl], [rdl, rml])
 armtop("sxth", [bs('10110010'), bs('00'), rml, rdl], [rdl, rml])
+
+armtop("uxtab", [bs('111110100'), bs('101'), rn_nopc, bs('1111'), rd, bs('10'), rot2, rm_rot2], [rd, rn_nopc, rm_rot2])
+armtop("uxtah", [bs('111110100'), bs('001'), rn_nopc, bs('1111'), rd, bs('10'), rot2, rm_rot2], [rd, rn_nopc, rm_rot2])
 
 # thumb2 ######################
 #
@@ -2733,7 +2737,7 @@ class armt2_imm6_11l(arm_imm):
         v = self.expr.arg.arg - 4
         s = 0
         if v != sign_ext(v & ((1 << 22) - 1), 21, 32):
-            return False 
+            return False
         if v & 0x80000000:
             s = 1
         v &= (1<<22) - 1
@@ -2768,6 +2772,7 @@ imm5_2 = bs(l=2, fname="imm5_2")
 imm_stype = bs(l=2, fname="stype")
 
 imm_stype_00 = bs('00', fname="stype")
+imm_stype_01 = bs('01', fname="stype")
 imm_stype_11 = bs('11', fname="stype")
 
 
@@ -2961,7 +2966,7 @@ class armt_op2imm(arm_imm8_12):
 
         e = self.expr
         assert(isinstance(e, ExprMem))
-        e = e.arg
+        e = e.ptr
         if e.op == 'wback':
             self.parent.wback.value = 1
             e = e.args[0]
@@ -3034,7 +3039,7 @@ class armt_deref_reg(arm_imm8_12):
     def encode(self):
         if not isinstance(self.expr, ExprMem):
             return False
-        ptr = self.expr.arg
+        ptr = self.expr.ptr
         if not ptr.is_op('preinc'):
             return False
         if len(ptr.args) != 2:
@@ -3074,7 +3079,7 @@ class armt_deref_reg_reg(arm_arg):
         expr = self.expr
         if not expr.is_mem():
             return False
-        ptr = expr.arg
+        ptr = expr.ptr
         if not ptr.is_op('+') or len(ptr.args) != 2:
             return False
         reg1, reg2 = ptr.args
@@ -3097,7 +3102,7 @@ class armt_deref_reg_reg_lsl_1(arm_reg):
         expr = self.expr
         if not expr.is_mem():
             return False
-        ptr = expr.arg
+        ptr = expr.ptr
         if not ptr.is_op('+') or len(ptr.args) != 2:
             return False
         reg1, reg_shift = ptr.args
@@ -3207,16 +3212,23 @@ armtop("rsb", [bs('11101011110'), scc, rn, bs('0'), imm5_3, rd, imm5_2, imm_styp
 armtop("orn", [bs('11101010011'), scc, rn_nopc, bs('0'), imm5_3, rd, imm5_2, imm_stype, rm_sh], [rd, rn_nopc, rm_sh] )
 # lsl
 armtop("mov", [bs('11101010010'), scc, bs('1111'), bs('0'), imm5_3, rd_nosppc, imm5_2, imm_stype_00, rm_sh], [rd_nosppc, rm_sh] )
+armtop("mov", [bs('11101010010'), scc, bs('1111'), bs('0'), imm5_3, rd_nosppc, imm5_2, imm_stype_01, rm_sh], [rd_nosppc, rm_sh] )
 armtop("mov", [bs('11101010010'), scc, bs('1111'), bs('0'), imm5_3, rd_nosppc, imm5_2, imm_stype_11, rm_sh], [rd_nosppc, rm_sh] )
 
 
 armtop("orr", [bs('11110'), imm12_1, bs('00010'), scc, rn_nosppc, bs('0'), imm12_3, rd, imm12_8] )
-armtop("add", [bs('11110'), imm12_1, bs('01000'), scc, rn, bs('0'), imm12_3, rd, imm12_8], [rd, rn, imm12_8])
+armtop("add", [bs('11110'), imm12_1, bs('01000'), bs('0'), rn, bs('0'), imm12_3, rd_nopc, imm12_8], [rd_nopc, rn, imm12_8])
+armtop("adds",[bs('11110'), imm12_1, bs('01000'), bs('1'), rn, bs('0'), imm12_3, rd_nopc, imm12_8], [rd_nopc, rn, imm12_8])
 armtop("bic", [bs('11110'), imm12_1, bs('00001'), scc, rn_nosppc, bs('0'), imm12_3, rd, imm12_8], [rd, rn_nosppc, imm12_8])
 armtop("and", [bs('11110'), imm12_1, bs('00000'), scc, rn, bs('0'), imm12_3, rd_nopc, imm12_8], [rd_nopc, rn, imm12_8])
 armtop("sub", [bs('11110'), imm12_1, bs('01101'), scc, rn, bs('0'), imm12_3, rd_nopc, imm12_8], [rd_nopc, rn, imm12_8])
+armtop("eor", [bs('11110'), imm12_1, bs('00100'), scc, rn, bs('0'), imm12_3, rd_nopc, imm12_8], [rd_nopc, rn, imm12_8])
 armtop("add", [bs('11110'), imm12_1, bs('10000'), scc, rn_nosppc, bs('0'), imm12_3, rd, imm12_8_t4], [rd, rn_nosppc, imm12_8_t4])
 armtop("cmp", [bs('11110'), imm12_1, bs('01101'), bs('1'), rn, bs('0'), imm12_3, bs('1111'), imm12_8] )
+
+armtop("cmp", [bs('11101011101'), bs('1'), rn, bs('0'), imm5_3, bs('1111'), imm5_2, imm_stype, rm_sh], [rn, rm_sh] )
+
+armtop("cmn", [bs('11110'), imm12_1, bs('01000'), bs('1'), rn, bs('0'), imm12_3, bs('1111'), imm12_8], [rn, imm12_8])
 
 
 armtop("mvn", [bs('11110'), imm12_1, bs('00011'), scc, bs('1111'), bs('0'), imm12_3, rd, imm12_8])
@@ -3276,3 +3288,5 @@ armtop("clz",  [bs('111110101011'), rm, bs('1111'), rd, bs('1000'), rm_cp], [rd,
 armtop("tbb",  [bs('111010001101'), rn_noarg, bs('11110000000'), bs('0'), bs_deref_reg_reg], [bs_deref_reg_reg])
 armtop("tbh",  [bs('111010001101'), rn_noarg, bs('11110000000'), bs('1'), bs_deref_reg_reg_lsl_1], [bs_deref_reg_reg_lsl_1])
 armtop("dsb",  [bs('111100111011'), bs('1111'), bs('1000'), bs('1111'), bs('0100'), barrier_option])
+
+armtop("adr", [bs('11110'), imm12_1, bs('100000'), bs('1111'), bs('0'), imm12_3, rd, imm12_8_t4], [rd, imm12_8_t4])

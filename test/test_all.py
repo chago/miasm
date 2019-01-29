@@ -21,7 +21,8 @@ TAGS = {"regression": "REGRESSION", # Regression tests
         "long": "LONG", # Very time consumming tests
         "llvm": "LLVM", # LLVM dependency is required
         "gcc": "GCC", # GCC based tests
-        "z3": "Z3", # Z3 dependecy is needed
+        "python": "PYTHON", # Python jitted tests
+        "z3": "Z3", # Z3 dependency is needed
         "qemu": "QEMU", # QEMU tests (several tests)
         "cparser": "CPARSER", # pycparser is needed
         "linux": "LINUX", # Test must be run on a Linux
@@ -88,6 +89,9 @@ for script in ["x86/sem.py",
                "x86/unit/mn_cpuid.py",
                "x86/unit/mn_div.py",
                "x86/unit/test_asm_x86_64.py",
+               "x86/unit/mn_getset128.py",
+               "x86/unit/mn_cmov.py",
+               "x86/unit/mn_rotsh.py",
                "arm/arch.py",
                "arm/sem.py",
                "aarch64/unit/mn_ubfm.py",
@@ -106,7 +110,7 @@ for script in ["x86/sem.py",
             continue
         testset += ArchUnitTest(script, jitter, base_dir="arch", tags=tags)
 
-testset += ArchUnitTest("x86/unit/access_xmm.py", "python", base_dir="arch")
+testset += ArchUnitTest("x86/unit/access_xmm.py", "python", base_dir="arch", tags=[TAGS["python"]])
 
 ### QEMU regression tests
 class QEMUTest(RegressionTest):
@@ -184,6 +188,60 @@ for test_name in QEMU_TESTS:
             continue
         tags = [TAGS[jitter]] if jitter in TAGS else []
         testset += QEMUTest(test_name, jitter, tags=tags)
+
+
+class QEMUTestx86_64(QEMUTest):
+    SAMPLE_NAME = "test-x86_64"
+    SCRIPT_NAME = "testqemu64.py"
+    EXPECTED_PATH = "expected_x86_64"
+
+
+# Test name -> supported jitter engines
+QEMU_TESTS_x86_64 = [
+    "adc",
+    "add",
+    "and",
+    "btc",
+    "bt",
+    "btr",
+    "bts",
+    "cmp",
+    "conv",
+    "dec",
+    "inc",
+    "jcc",
+    "lea",
+    "misc",
+    "mul",
+    "neg",
+    "not",
+    "or",
+    "rcl",
+    "rcr",
+    "rol",
+    "ror",
+    "sar",
+    "sbb",
+    "shld",
+    "shl",
+    "shrd",
+    "shr",
+    "string",
+    "sub",
+    "xor",
+    # Unsupported
+    # "sse", "floats", "loop", "xchg", "fxsave"
+]
+
+
+for test_name in QEMU_TESTS_x86_64:
+    for jitter in QEMUTestx86_64.jitter_engines:
+        if is_win and jitter == "llvm" and test_name in [
+                "mul", "rcl", "rcr"
+        ]:
+            continue
+        tags = [TAGS[jitter]] if jitter in TAGS else []
+        testset += QEMUTestx86_64(test_name, jitter, tags=tags)
 
 
 ## Semantic
@@ -326,6 +384,7 @@ testset += RegressionTest(["data_flow.py"], base_dir="analysis",
             ["simp_graph_%02d.dot" % test_nb, "graph_%02d.dot" % test_nb]
             for test_nb in xrange(1, 18))
                                     for fname in fnames])
+testset += RegressionTest(["unssa.py"], base_dir="analysis")
 
 for i in xrange(1, 21):
     input_name = "cst_propag/x86_32_sc_%d" % i
@@ -481,6 +540,11 @@ test_x86_32_if_reg = ExampleShellcode(['x86_32', 'x86_32_if_reg.S', "x86_32_if_r
 test_x86_32_seh = ExampleShellcode(["x86_32", "x86_32_seh.S", "x86_32_seh.bin",
                                     "--PE"])
 test_x86_32_dead = ExampleShellcode(['x86_32', 'x86_32_dead.S', "x86_32_dead.bin"])
+test_x86_32_dis = ExampleShellcode(
+    [
+        "x86_32", "test_x86_32_dis.S", "test_x86_32_dis.bin", "--PE"
+    ]
+)
 
 test_human = ExampleShellcode(["x86_64", "human.S", "human.bin"])
 
@@ -500,6 +564,7 @@ testset += test_x86_32_if_reg
 testset += test_x86_32_seh
 testset += test_x86_32_dead
 testset += test_human
+testset += test_x86_32_dis
 
 class ExampleDisassembler(Example):
     """Disassembler examples specificities:
@@ -508,15 +573,20 @@ class ExampleDisassembler(Example):
     example_dir = "disasm"
 
 
-for script, prods in [(["single_instr.py"], []),
-                      (["callback.py"], []),
-                      (["function.py"], ["graph.dot"]),
-                      (["file.py", Example.get_sample("box_upx.exe"),
-                        "0x407570"], ["graph.dot"]),
-                      (["full.py", Example.get_sample("box_upx.exe")],
-                       ["graph_execflow.dot", "lines.dot"]),
-                      ]:
-    testset += ExampleDisassembler(script, products=prods)
+for script, prods, depends in [
+        (["single_instr.py"], [], []),
+        (["callback.py"], [], []),
+        (["dis_x86_string.py"], ["str_cfg.dot"], []),
+        (["dis_binary.py", Example.get_sample("test_x86_32_dis.bin"),
+        ], ["bin_cfg.dot"], [test_x86_32_dis]),
+        (["dis_binary_ir.py", Example.get_sample("test_x86_32_dis.bin"),
+        ], ["bin_ir_cfg.dot"], [test_x86_32_dis]),
+        (["dis_binary_ira.py", Example.get_sample("test_x86_32_dis.bin"),
+        ], ["bin_ira_cfg.dot"], [test_x86_32_dis]),
+        (["full.py", Example.get_sample("box_upx.exe")],
+         ["graph_execflow.dot", "lines.dot"], []),
+]:
+    testset += ExampleDisassembler(script, products=prods, depends=depends)
 
 
 class ExampleDisasmFull(ExampleDisassembler):
@@ -535,17 +605,17 @@ class ExampleDisasmFull(ExampleDisassembler):
 
 
 testset += ExampleDisasmFull(["arml", Example.get_sample("demo_arm_l.bin"),
-                              "0"], depends=[test_arml])
+                              "0x2c", "-z"], depends=[test_arml])
 testset += ExampleDisasmFull(["armb", Example.get_sample("demo_arm_b.bin"),
-                              "0"], depends=[test_armb])
+                              "0x2c", "-z"], depends=[test_armb])
 testset += ExampleDisasmFull(["arml", Example.get_sample("demo_arm2_l.bin"),
-                              "0"], depends=[test_arml_sc])
+                              "0x0", "-z"], depends=[test_arml_sc])
 testset += ExampleDisasmFull(["armb", Example.get_sample("demo_arm2_b.bin"),
-                              "0"], depends=[test_armb_sc])
+                              "0x0", "-z"], depends=[test_armb_sc])
 testset += ExampleDisasmFull(["armtl", Example.get_sample("demo_armt_l.bin"),
-                              "0"], depends=[test_armtl])
+                              "0x2c", "-z"], depends=[test_armtl])
 testset += ExampleDisasmFull(["armtb", Example.get_sample("demo_armt_b.bin"),
-                              "0"], depends=[test_armtb])
+                              "0x2c", "-z"], depends=[test_armtb])
 testset += ExampleDisasmFull(["aarch64l", Example.get_sample("demo_aarch64_l.bin"),
                               "0"], depends=[test_aarch64l])
 testset += ExampleDisasmFull(["aarch64b", Example.get_sample("demo_aarch64_b.bin"),
@@ -607,6 +677,9 @@ testset += ExampleExpression(["expr_c.py"],
 testset += ExampleExpression(["constant_propagation.py",
                               Example.get_sample("simple_test.bin"), "-s", "0"],
                              products=["%s.propag.dot" % Example.get_sample("simple_test.bin")])
+testset += ExampleExpression(["export_llvm.py", "-a", "x86_32", Example.get_sample("simple_test.bin"), "0"],
+                             products=["out.ll"])
+
 
 for script in [["basic_op.py"],
                ["basic_simplification.py"],
@@ -679,7 +752,7 @@ class ExampleJitterNoPython(ExampleJitter):
 
 for jitter in ExampleJitter.jitter_engines:
     # Take 5 min on a Core i5
-    tags = {"python": [TAGS["long"]],
+    tags = {"python": [TAGS["long"], TAGS["python"]],
             "llvm": [TAGS["llvm"]],
             "gcc": [TAGS["gcc"]],
             }
@@ -776,7 +849,7 @@ By default, all tag are considered." % ", ".join(TAGS.keys()), default="")
                 continue
             if tag not in TAGS:
                 print "%(red)s[TAG]%(end)s" % cosmetics.colors, \
-                    "Unkown tag '%s'" % tag
+                    "Unknown tag '%s'" % tag
                 exit(-1)
             dest.append(TAGS[tag])
 
@@ -813,7 +886,7 @@ By default, all tag are considered." % ", ".join(TAGS.keys()), default="")
         config.write(open(coveragerc, 'w'))
 
         # Add arguments to tests command line
-        testset.add_additionnal_args(["-m", "coverage", "run", "--rcfile",
+        testset.add_additional_args(["-m", "coverage", "run", "--rcfile",
                                       coveragerc, "-a"])
 
 

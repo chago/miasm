@@ -6,7 +6,7 @@ from miasm2.expression.expression import Expr, ExprId, ExprLoc, ExprInt, \
     ExprMem, ExprCond, LocKey
 from miasm2.ir.ir import IRBlock, AssignBlock
 
-from miasm2.ir.translators.C import TranslatorC, int_size_to_bn
+from miasm2.ir.translators.C import TranslatorC
 from miasm2.core.asmblock import AsmBlockBad
 from miasm2.expression.simplifications import expr_simp_high_to_explicit
 
@@ -132,9 +132,9 @@ class CGen(object):
         return self.translator.from_expr(self.patch_c_id(expr))
 
     def add_label_index(self, dst2index, loc_key):
-        """Insert @lbl to the dictionnary @dst2index with a uniq value
+        """Insert @lbl to the dictionary @dst2index with a uniq value
         @dst2index: LocKey -> uniq value
-        @loc_key: LocKey istance"""
+        @loc_key: LocKey instance"""
 
         if loc_key not in dst2index:
             dst2index[loc_key] = len(dst2index)
@@ -170,7 +170,8 @@ class CGen(object):
             # Simplify high level operators
             out = []
             for irblock in irblocks:
-                new_irblock = irblock.simplify(expr_simp_high_to_explicit)[1]
+                new_irblock = self.ir_arch.irbloc_fix_regs_for_mode(irblock, self.ir_arch.attrib)
+                new_irblock = new_irblock.simplify(expr_simp_high_to_explicit)[1]
                 out.append(new_irblock)
             irblocks = out
 
@@ -182,9 +183,9 @@ class CGen(object):
 
     def add_local_var(self, dst_var, dst_index, expr):
         """
-        Add local varaible used to store temporay result
-        @dst_var: dictionnary of Expr -> local_var_expr
-        @dst_index : dictionnary of size -> local var count
+        Add local variable used to store temporay result
+        @dst_var: dictionary of Expr -> local_var_expr
+        @dst_index : dictionary of size -> local var count
         @expr: Expression source
         """
         size = expr.size
@@ -201,7 +202,7 @@ class CGen(object):
     def get_mem_prefetch(self, assignblk):
         """
         Generate temporary variables used to fetch memory used in the @assignblk
-        Return a dictionnary: ExprMem -> temporary variable
+        Return a dictionary: ExprMem -> temporary variable
         @assignblk: AssignBlock instance
         """
         mem_index = {8: 0, 16: 0, 32: 0, 64: 0, 128:0}
@@ -223,7 +224,7 @@ class CGen(object):
 
     def gen_c_assignments(self, assignblk):
         """
-        Return C informations used to generate the C code of the @assignblk
+        Return C information used to generate the C code of the @assignblk
         @assignblk: an AssignBlock instance
         """
         c_var = []
@@ -255,7 +256,7 @@ class CGen(object):
             elif isinstance(dst, ExprId):
                 new_dst = self.add_local_var(dst_var, dst_index, dst)
                 if dst in self.ir_arch.arch.regs.regs_flt_expr:
-                    # Dont mask float affectation
+                    # Don't mask float assignment
                     c_main.append(
                         '%s = (%s);' % (self.id_to_c(new_dst), self.id_to_c(src)))
                 elif new_dst.size <= self.translator.NATIVE_INT_MAX_SIZE:
@@ -272,7 +273,7 @@ class CGen(object):
                         )
                     )
             elif isinstance(dst, ExprMem):
-                ptr = dst.arg.replace_expr(prefetchers)
+                ptr = dst.ptr.replace_expr(prefetchers)
                 if ptr.size <= self.translator.NATIVE_INT_MAX_SIZE:
                     new_dst = ExprMem(ptr, dst.size)
                     str_dst = self.id_to_c(new_dst).replace('MEM_LOOKUP', 'MEM_WRITE')
@@ -320,7 +321,7 @@ class CGen(object):
     def traverse_expr_dst(self, expr, dst2index):
         """
         Generate the index of the destination label for the @expr
-        @dst2index: dictionnary to link label to its index
+        @dst2index: dictionary to link label to its index
         """
 
         if isinstance(expr, ExprCond):
@@ -391,11 +392,13 @@ class CGen(object):
             )
         return out
 
-    def gen_post_code(self, attrib):
+    def gen_post_code(self, attrib, pc_value):
         """Callback to generate code AFTER the instruction execution
         @attrib: Attributes instance"""
         out = []
         if attrib.log_regs:
+            # Update PC for dump_gpregs
+            out.append("%s = %s;" % (self.C_PC, pc_value))
             out.append('dump_gpregs(jitcpu->cpu);')
         return out
 
@@ -407,7 +410,7 @@ class CGen(object):
 
         out = []
         if isinstance(dst, Expr):
-            out += self.gen_post_code(attrib)
+            out += self.gen_post_code(attrib, "DST_value")
             out.append('BlockDst->address = DST_value;')
             out += self.gen_post_instr_checks(attrib)
             out.append('\t\treturn JIT_RET_NO_EXCEPTION;')
@@ -422,11 +425,11 @@ class CGen(object):
             offset in instr_offsets):
             # Only generate goto for next instructions.
             # (consecutive instructions)
-            out += self.gen_post_code(attrib)
+            out += self.gen_post_code(attrib, "0x%x" % offset)
             out += self.gen_post_instr_checks(attrib)
             out.append('goto %s;' % dst)
         else:
-            out += self.gen_post_code(attrib)
+            out += self.gen_post_code(attrib, "0x%x" % offset)
             out.append('BlockDst->address = DST_value;')
             out += self.gen_post_instr_checks(attrib)
             out.append('\t\treturn JIT_RET_NO_EXCEPTION;')
@@ -631,13 +634,12 @@ class CGen(object):
         for instr, irblocks in zip(block.lines, irblocks_list):
             instr_attrib, irblocks_attributes = self.get_attributes(instr, irblocks, log_mn, log_regs)
             for index, irblock in enumerate(irblocks):
-                new_irblock = self.ir_arch.irbloc_fix_regs_for_mode(irblock, self.ir_arch.attrib)
-                label = str(new_irblock.loc_key)
+                label = str(irblock.loc_key)
                 out.append("%-40s // %.16X %s" %
                            (label + ":", instr.offset, instr))
                 if index == 0:
                     out += self.gen_pre_code(instr_attrib)
-                out += self.gen_irblock(instr_attrib, irblocks_attributes[index], instr_offsets, new_irblock)
+                out += self.gen_irblock(instr_attrib, irblocks_attributes[index], instr_offsets, irblock)
 
         out += self.gen_finalize(block)
 

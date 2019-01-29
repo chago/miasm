@@ -1,6 +1,6 @@
 """Provide dependency graph"""
 
-from miasm2.expression.expression import ExprInt, ExprLoc, ExprAff
+from miasm2.expression.expression import ExprInt, ExprLoc, ExprAssign
 from miasm2.core.graph import DiGraph
 from miasm2.core.locationdb import LocationDB
 from miasm2.expression.simplifications import expr_simp_explicit
@@ -49,6 +49,9 @@ class DependencyNode(object):
         return (self.loc_key == depnode.loc_key and
                 self.element == depnode.element and
                 self.line_nb == depnode.line_nb)
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
     def __cmp__(self, node):
         """Compares @self with @node."""
@@ -195,8 +198,9 @@ class DependencyResult(DependencyState):
     """Container and methods for DependencyGraph results"""
 
     def __init__(self, ircfg, initial_state, state, inputs):
+
+        super(DependencyResult, self).__init__(state.loc_key, state.pending)
         self.initial_state = initial_state
-        self.loc_key = state.loc_key
         self.history = state.history
         self.pending = state.pending
         self.line_nb = state.line_nb
@@ -205,7 +209,6 @@ class DependencyResult(DependencyState):
         self._ircfg = ircfg
 
         # Init lazy elements
-        self._graph = None
         self._has_loop = None
 
     @property
@@ -276,7 +279,7 @@ class DependencyResult(DependencyState):
         """Symbolic execution of relevant nodes according to the history
         Return the values of inputs nodes' elements
         @ir_arch: IntermediateRepresentation instance
-        @ctx: (optional) Initial context as dictionnary
+        @ctx: (optional) Initial context as dictionary
         @step: (optional) Verbose execution
         Warning: The emulation is not sound if the inputs nodes depend on loop
         variant.
@@ -287,7 +290,7 @@ class DependencyResult(DependencyState):
             ctx_init.update(ctx)
         assignblks = []
 
-        # Build a single affectation block according to history
+        # Build a single assignment block according to history
         last_index = len(self.relevant_loc_keys)
         for index, loc_key in enumerate(reversed(self.relevant_loc_keys), 1):
             if index == last_index and loc_key == self.initial_state.loc_key:
@@ -316,7 +319,7 @@ class DependencyResultImplicit(DependencyResult):
     # Z3 Solver instance
     _solver = None
 
-    unsat_expr = ExprAff(ExprInt(0, 1), ExprInt(1, 1))
+    unsat_expr = ExprAssign(ExprInt(0, 1), ExprInt(1, 1))
 
     def _gen_path_constraints(self, translator, expr, expected):
         """Generate path constraint from @expr. Handle special case with
@@ -338,7 +341,7 @@ class DependencyResultImplicit(DependencyResult):
                 conds = z3.And(
                     conds,
                     translator.from_expr(
-                        ExprAff(value,
+                        ExprAssign(value,
                                 expected))
                 )
             out.append(conds)
@@ -444,7 +447,7 @@ class DependencyGraph(object):
     A dependency graph contains DependencyNode as nodes. The oriented edges
     stand for a dependency.
     The dependency graph is made of the lines of a group of IRblock
-    *explicitely* or *implicitely* involved in the equation of given element.
+    *explicitly* or *implicitly* involved in the equation of given element.
     """
 
     def __init__(self, ircfg,

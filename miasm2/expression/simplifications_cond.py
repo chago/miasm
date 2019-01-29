@@ -1,8 +1,8 @@
 ################################################################################
 #
-# By choice, Miasm2 does not handle comparaison as a single operation, but with
-# operations corresponding to comparaison computation.
-# One may want to detect those comparaison; this library is designed to add them
+# By choice, Miasm2 does not handle comparison as a single operation, but with
+# operations corresponding to comparison computation.
+# One may want to detect those comparison; this library is designed to add them
 # in Miasm2 engine thanks to :
 # - Conditions computation in ExprOp
 # - Simplifications to catch known condition forms
@@ -132,7 +132,7 @@ def expr_simp_inverse(expr_simp, e):
                         to_match,
                         [jok1, jok2, jok_small])
 
-    # Check for 2 symetric cases
+    # Check for 2 symmetric cases
     if r is False:
         to_match = (ExprOp_inf_signed(jok1, jok2) ^ jok_small)
         r = __match_expr_wrap(e,
@@ -176,57 +176,3 @@ def expr_simp_equal(expr_simp, e):
         return e
 
     return ExprOp_equal(r[jok1], expr_simp(-r[jok2]))
-
-# Compute conditions
-
-def exec_inf_unsigned(expr_simp, e):
-    "Compute x <u y"
-    if e.op != m2_expr.TOK_INF_UNSIGNED:
-        return e
-
-    arg1, arg2 = e.args
-
-    if isinstance(arg1, m2_expr.ExprInt) and isinstance(arg2, m2_expr.ExprInt):
-        return m2_expr.ExprInt(1, 1) if (arg1.arg < arg2.arg) else m2_expr.ExprInt(0, 1)
-    else:
-        return e
-
-
-def __comp_signed(arg1, arg2):
-    """Return ExprInt(1, 1) if arg1 <s arg2 else ExprInt(0, 1)
-    @arg1, @arg2: ExprInt"""
-
-    val1 = int(arg1)
-    if val1 >> (arg1.size - 1) == 1:
-        val1 = - ((int(arg1.mask) ^ val1) + 1)
-
-    val2 = int(arg2)
-    if val2 >> (arg2.size - 1) == 1:
-        val2 = - ((int(arg2.mask) ^ val2) + 1)
-
-    return m2_expr.ExprInt(1, 1) if (val1 < val2) else m2_expr.ExprInt(0, 1)
-
-def exec_inf_signed(expr_simp, e):
-    "Compute x <s y"
-
-    if e.op != m2_expr.TOK_INF_SIGNED:
-        return e
-
-    arg1, arg2 = e.args
-
-    if isinstance(arg1, m2_expr.ExprInt) and isinstance(arg2, m2_expr.ExprInt):
-        return __comp_signed(arg1, arg2)
-    else:
-        return e
-
-def exec_equal(expr_simp, e):
-    "Compute x == y"
-
-    if e.op != m2_expr.TOK_EQUAL:
-        return e
-
-    arg1, arg2 = e.args
-    if isinstance(arg1, m2_expr.ExprInt) and isinstance(arg2, m2_expr.ExprInt):
-        return m2_expr.ExprInt(1, 1) if (arg1.arg == arg2.arg) else m2_expr.ExprInt(0, 1)
-    else:
-        return e

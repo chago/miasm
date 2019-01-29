@@ -146,7 +146,7 @@ def fill_loc_db_with_symbols(elf, loc_db, base_addr=0):
 
 
 def apply_reloc_x86(elf, vm, section, base_addr, loc_db):
-    """Apply relocation for x86 ELF contained in the secion @section
+    """Apply relocation for x86 ELF contained in the section @section
     @elf: elfesteem's ELF instance
     @vm: VmMngr instance
     @section: elf's section containing relocation to perform
@@ -166,7 +166,6 @@ def apply_reloc_x86(elf, vm, section, base_addr, loc_db):
     for reloc in section.reltab:
 
         # Parse relocation info
-        r_addend = reloc.addend if hasattr(reloc, "addend") else 0
         r_info = reloc.info
         if elf.size == 64:
             r_info_sym = (r_info >> 32) & 0xFFFFFFFF

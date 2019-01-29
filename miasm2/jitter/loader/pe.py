@@ -126,7 +126,7 @@ def vm_load_pe(vm, fdata, align_s=True, load_hdr=True, name="", **kargs):
     @load_hdr: (optional) If False, do not load the NThdr in memory
     Return the corresponding PE instance.
 
-    Extra arguments are passed to PE instanciation.
+    Extra arguments are passed to PE instantiation.
     If all sections are aligned, they will be mapped on several different pages
     Otherwise, a big page is created, containing all sections
     """
@@ -167,7 +167,7 @@ def vm_load_pe(vm, fdata, align_s=True, load_hdr=True, name="", **kargs):
                 )
                 section.offset = section.addr
 
-            # Last section alignement
+            # Last section alignment
             last_section = pe.SHList[-1]
             last_section.size = (last_section.size + 0xfff) & 0xfffff000
 
@@ -404,7 +404,6 @@ class libimp_pe(libimp):
                         # Ensure function entry is created
                         _ = self.lib_get_add_func(new_lib_base, exp_fname)
 
-                    c_name = canon_libname_libfunc(exp_dname, exp_fname)
                     libad_tmp = self.name2off[exp_dname]
                     ad = self.lib_imp2ad[libad_tmp][exp_fname]
 

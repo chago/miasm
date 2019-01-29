@@ -615,10 +615,9 @@ bn_t bignum_mask(bn_t src, int bits)
 	bn_t dst;
 	bn_t mask;
 
-	mask = bignum_from_int(1);
-	mask = bignum_lshift(mask, bits);
+	mask = bignum_from_int(0);
 	mask = bignum_dec(mask);
-
+	mask = bignum_rshift(mask, BN_BIT_SIZE - bits);
 	dst = bignum_and(src, mask);
 	return dst;
 }
@@ -797,7 +796,7 @@ int bignum_cnttrailzeros(bn_t n, int size)
 
 
 
-bn_t bignum_idiv(bn_t a, bn_t b, int size)
+bn_t bignum_sdiv(bn_t a, bn_t b, int size)
 {
 	require(size, "size must be greater than 0");
 	require(size <= BN_BIT_SIZE, "size must be below bignum max size");
@@ -833,14 +832,14 @@ bn_t bignum_idiv(bn_t a, bn_t b, int size)
 
 
 
-bn_t bignum_imod(bn_t a, bn_t b, int size)
+bn_t bignum_smod(bn_t a, bn_t b, int size)
 {
 	require(size, "size must be greater than 0");
 	require(size <= BN_BIT_SIZE, "size must be below bignum max size");
 
 	bn_t c;
 
-	c = bignum_idiv(a, b, size);
+	c = bignum_sdiv(a, b, size);
 	c = bignum_mul(c, b);
 	c = bignum_sub(a, c);
 	c = bignum_mask(c, size);

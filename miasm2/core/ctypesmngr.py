@@ -36,6 +36,9 @@ class CTypeBase(object):
     def _typerepr(self):
         return self.__repr
 
+    def __eq__(self, other):
+        raise NotImplementedError("Abstract method")
+
     def __ne__(self, other):
         return not self.__eq__(other)
 
@@ -58,7 +61,7 @@ class CTypeId(CTypeBase):
 
     def __init__(self, *names):
         # Type specifier order does not matter
-        # so the cannonical form is ordered
+        # so the canonical form is ordered
         self.names = tuple(sorted(names))
         super(CTypeId, self).__init__()
 
@@ -369,7 +372,7 @@ class CAstTypes(object):
         }
 
     def gen_uniq_name(self):
-        """Generate uniq name for unamed strucs/union"""
+        """Generate uniq name for unnamed strucs/union"""
         cpt = self.cpt
         self.cpt += 1
         return self.INTERNAL_PREFIX + "%d" % cpt
@@ -551,7 +554,7 @@ class CAstTypes(object):
         elif isinstance(ast, c_ast.Constant):
             result = int(ast.value, 0)
         elif isinstance(ast, c_ast.Cast):
-            # TODO: Can trunc intergers?
+            # TODO: Can trunc integers?
             result = self.ast_eval_int(ast.expr)
         else:
             raise NotImplementedError("Not implemented!")

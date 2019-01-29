@@ -5,7 +5,7 @@ from miasm2.core.locationdb import LocationDB
 from miasm2.core.utils import pck32, upck32
 from miasm2.arch.arm.sem import ir_armb, ir_arml, ir_armtl, ir_armtb, cond_dct_inv, tab_cond
 from miasm2.jitter.codegen import CGen
-from miasm2.expression.expression import ExprId, ExprAff, ExprCond
+from miasm2.expression.expression import ExprId, ExprAssign, ExprCond
 from miasm2.ir.ir import IRBlock, AssignBlock
 from miasm2.ir.translators.C import TranslatorC
 from miasm2.expression.simplifications import expr_simp_high_to_explicit
@@ -74,12 +74,12 @@ class jitter_arml(Jitter):
         self.vm.set_mem(self.cpu.SP, pck32(value))
 
     def pop_uint32_t(self):
-        value = upck32(self.vm.get_mem(self.cpu.SP, 4))
+        value = self.vm.get_u32(self.cpu.SP)
         self.cpu.SP += 4
         return value
 
     def get_stack_arg(self, index):
-        return upck32(self.vm.get_mem(self.cpu.SP + 4 * index, 4))
+        return self.vm.get_u32(self.cpu.SP + 4 * index)
 
     # calling conventions
 

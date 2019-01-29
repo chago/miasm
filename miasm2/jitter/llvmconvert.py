@@ -15,10 +15,10 @@ import os
 from llvmlite import binding as llvm
 from llvmlite import ir as llvm_ir
 from miasm2.expression.expression import ExprId, ExprInt, ExprMem, ExprSlice, \
-    ExprCond, ExprLoc, ExprOp, ExprCompose, LocKey
+    ExprCond, ExprLoc, ExprOp, ExprCompose, LocKey, Expr
 import miasm2.jitter.csts as m2_csts
 import miasm2.core.asmblock as m2_asmblock
-from miasm2.jitter.codegen import CGen
+from miasm2.jitter.codegen import CGen, Attributes
 from miasm2.expression.expression_helper import possible_values
 
 
@@ -76,7 +76,7 @@ class LLVMContext():
         llvm.initialize_native_target()
         llvm.initialize_native_asmprinter()
 
-        # Initilize target for compilation
+        # Initialize target for compilation
         target = llvm.Target.from_default_triple()
         self.target_machine = target.create_target_machine()
         self.init_exec_engine()
@@ -114,6 +114,7 @@ class LLVMContext():
         """Create a module, with needed functions"""
         self.mod = llvm_ir.Module(name=name)
         self.add_fc(self.known_fc)
+        self.add_op()
 
     def get_execengine(self):
         "Return the Execution Engine associated with this context"
@@ -139,6 +140,60 @@ class LLVMContext():
             fn = llvm_ir.Function(self.mod, fnty, name=name)
             if readonly:
                 fn.attributes.add("readonly")
+
+    def add_op(self):
+        "Add operations functions"
+
+        i8 = LLVMType.IntType(8)
+        p8 = llvm_ir.PointerType(i8)
+        itype = LLVMType.IntType(64)
+        ftype = llvm_ir.FloatType()
+        dtype = llvm_ir.DoubleType()
+        fc = {"llvm.ctpop.i8": {"ret": i8,
+                                "args": [i8]},
+              "llvm.nearbyint.f32": {"ret": ftype,
+                                     "args": [ftype]},
+              "llvm.nearbyint.f64": {"ret": dtype,
+                                     "args": [dtype]},
+              "llvm.trunc.f32": {"ret": ftype,
+                                 "args": [ftype]},
+              "segm2addr": {"ret": itype,
+                            "args": [p8,
+                                     itype,
+                                     itype]},
+              "x86_cpuid": {"ret": itype,
+                        "args": [itype,
+                                 itype]},
+              "fpu_fcom_c0": {"ret": itype,
+                          "args": [dtype,
+                                   dtype]},
+              "fpu_fcom_c1": {"ret": itype,
+                          "args": [dtype,
+                                   dtype]},
+              "fpu_fcom_c2": {"ret": itype,
+                          "args": [dtype,
+                                   dtype]},
+              "fpu_fcom_c3": {"ret": itype,
+                          "args": [dtype,
+                                   dtype]},
+              "llvm.sqrt.f32": {"ret": ftype,
+                                "args": [ftype]},
+              "llvm.sqrt.f64": {"ret": dtype,
+                                "args": [dtype]},
+              "llvm.fabs.f32": {"ret": ftype,
+                                "args": [ftype]},
+              "llvm.fabs.f64": {"ret": dtype,
+                                "args": [dtype]},
+        }
+
+        for k in [8, 16]:
+            fc["bcdadd_%s" % k] = {"ret": LLVMType.IntType(k),
+                                   "args": [LLVMType.IntType(k),
+                                            LLVMType.IntType(k)]}
+            fc["bcdadd_cf_%s" % k] = {"ret": LLVMType.IntType(k),
+                                      "args": [LLVMType.IntType(k),
+                                               LLVMType.IntType(k)]}
+        self.add_fc(fc, readonly=True)
 
 
     def memory_lookup(self, func, addr, size):
@@ -187,7 +242,6 @@ class LLVMContext_JIT(LLVMContext):
         LLVMContext.new_module(self, name)
         self.add_memlookups()
         self.add_get_exceptionflag()
-        self.add_op()
         self.add_log_functions()
 
     def arch_specific(self):
@@ -257,60 +311,6 @@ class LLVMContext_JIT(LLVMContext):
         self.add_fc({"get_exception_flag": {"ret": LLVMType.IntType(64),
                                             "args": [p8]}}, readonly=True)
 
-    def add_op(self):
-        "Add operations functions"
-
-        i8 = LLVMType.IntType(8)
-        p8 = llvm_ir.PointerType(i8)
-        itype = LLVMType.IntType(64)
-        ftype = llvm_ir.FloatType()
-        dtype = llvm_ir.DoubleType()
-        fc = {"llvm.ctpop.i8": {"ret": i8,
-                                "args": [i8]},
-              "llvm.nearbyint.f32": {"ret": ftype,
-                                     "args": [ftype]},
-              "llvm.nearbyint.f64": {"ret": dtype,
-                                     "args": [dtype]},
-              "llvm.trunc.f32": {"ret": ftype,
-                                 "args": [ftype]},
-              "segm2addr": {"ret": itype,
-                            "args": [p8,
-                                     itype,
-                                     itype]},
-              "x86_cpuid": {"ret": itype,
-                        "args": [itype,
-                                 itype]},
-              "fpu_fcom_c0": {"ret": itype,
-                          "args": [dtype,
-                                   dtype]},
-              "fpu_fcom_c1": {"ret": itype,
-                          "args": [dtype,
-                                   dtype]},
-              "fpu_fcom_c2": {"ret": itype,
-                          "args": [dtype,
-                                   dtype]},
-              "fpu_fcom_c3": {"ret": itype,
-                          "args": [dtype,
-                                   dtype]},
-              "llvm.sqrt.f32": {"ret": ftype,
-                                "args": [ftype]},
-              "llvm.sqrt.f64": {"ret": dtype,
-                                "args": [dtype]},
-              "llvm.fabs.f32": {"ret": ftype,
-                                "args": [ftype]},
-              "llvm.fabs.f64": {"ret": dtype,
-                                "args": [dtype]},
-        }
-
-        for k in [8, 16]:
-            fc["bcdadd_%s" % k] = {"ret": LLVMType.IntType(k),
-                                   "args": [LLVMType.IntType(k),
-                                            LLVMType.IntType(k)]}
-            fc["bcdadd_cf_%s" % k] = {"ret": LLVMType.IntType(k),
-                                      "args": [LLVMType.IntType(k),
-                                               LLVMType.IntType(k)]}
-        self.add_fc(fc, readonly=True)
-
     def add_log_functions(self):
         "Add functions for state logging"
 
@@ -320,7 +320,7 @@ class LLVMContext_JIT(LLVMContext):
                     readonly=True)
 
     def set_vmcpu(self, lookup_table):
-        "Set the correspondance between register name and vmcpu offset"
+        "Set the correspondence between register name and vmcpu offset"
 
         self.vmcpu = lookup_table
 
@@ -398,7 +398,7 @@ class LLVMContext_JIT(LLVMContext):
             builder.store(value, ret)
             value_ptr = builder.bitcast(ret, llvm_ir.IntType(8).as_pointer())
 
-            ret = builder.call(
+            builder.call(
                 fc_ptr,
                 [
                     func.local_vars["jitcpu"],
@@ -450,7 +450,7 @@ class LLVMContext_JIT(LLVMContext):
 
     def get_ptr_from_cache(self, file_name, func_name):
         "Load @file_name and return a pointer on the jitter @func_name"
-        # We use an empty module to avoid loosing time on function building
+        # We use an empty module to avoid losing time on function building
         empty_module = llvm.parse_assembly("")
         empty_module.fname_out = file_name
 
@@ -482,7 +482,7 @@ class LLVMContext_IRCompilation(LLVMContext):
         return builder.store(value, ptr_casted)
 
 
-class LLVMFunction():
+class LLVMFunction(object):
     """Represent a LLVM function
 
     Implementation note:
@@ -581,7 +581,6 @@ class LLVMFunction():
         ptr = builder.gep(self.local_vars["vmcpu"],
                           [llvm_ir.Constant(LLVMType.IntType(),
                                             offset)])
-        regs = self.llvm_context.ir_arch.arch.regs
         pointee_type = LLVMType.IntType(expr.size)
         ptr_casted = builder.bitcast(ptr,
                                      llvm_ir.PointerType(pointee_type))
@@ -669,8 +668,8 @@ class LLVMFunction():
 
     # Effective constructors
 
-    def affect(self, src, dst):
-        "Affect from LLVM src to M2 dst"
+    def assign(self, src, dst):
+        "Assign from LLVM src to M2 dst"
 
         # Destination
         builder = self.builder
@@ -680,10 +679,10 @@ class LLVMFunction():
             builder.store(src, ptr_casted)
 
         elif isinstance(dst, ExprMem):
-            addr = self.add_ir(dst.arg)
+            addr = self.add_ir(dst.ptr)
             self.llvm_context.memory_write(self, addr, dst.size, src)
         else:
-            raise Exception("UnknownAffectationType")
+            raise Exception("UnknownAssignmentType")
 
     def init_fc(self):
         "Init the function"
@@ -875,15 +874,15 @@ class LLVMFunction():
                 self.update_cache(expr, ret)
                 return ret
 
-            if op in ["imod", "idiv", "umod", "udiv"]:
+            if op in ["smod", "sdiv", "umod", "udiv"]:
                 assert len(expr.args) == 2
 
                 arg_b = self.add_ir(expr.args[1])
                 arg_a = self.add_ir(expr.args[0])
 
-                if op == "imod":
+                if op == "smod":
                     callback = builder.srem
-                elif op == "idiv":
+                elif op == "sdiv":
                     callback = builder.sdiv
                 elif op == "umod":
                     callback = builder.urem
@@ -891,6 +890,22 @@ class LLVMFunction():
                     callback = builder.udiv
 
                 ret = callback(arg_a, arg_b)
+                self.update_cache(expr, ret)
+                return ret
+
+            unsigned_cmps = {
+                "==": "==",
+                "<u": "<",
+                "<=u": "<="
+            }
+            if op in unsigned_cmps:
+                op = unsigned_cmps[op]
+                args = [self.add_ir(arg) for arg in expr.args]
+                ret = builder.select(builder.icmp_unsigned(op,
+                                                           args[0],
+                                                           args[1]),
+                                     llvm_ir.IntType(expr.size)(1),
+                                     llvm_ir.IntType(expr.size)(0))
                 self.update_cache(expr, ret)
                 return ret
 
@@ -1092,7 +1107,7 @@ class LLVMFunction():
 
         if isinstance(expr, ExprMem):
 
-            addr = self.add_ir(expr.arg)
+            addr = self.add_ir(expr.ptr)
             return self.llvm_context.memory_lookup(self, addr, expr.size)
 
         if isinstance(expr, ExprCond):
@@ -1216,8 +1231,8 @@ class LLVMFunction():
         PC = self.llvm_context.PC
         if isinstance(offset, (int, long)):
             offset = self.add_ir(ExprInt(offset, PC.size))
-        self.affect(offset, PC)
-        self.affect(self.add_ir(ExprInt(1, 8)), ExprId("status", 32))
+        self.assign(offset, PC)
+        self.assign(self.add_ir(ExprInt(1, 8)), ExprId("status", 32))
         self.set_ret(offset)
 
         builder.position_at_end(merge_block)
@@ -1263,8 +1278,8 @@ class LLVMFunction():
         PC = self.llvm_context.PC
         if isinstance(offset, (int, long)):
             offset = self.add_ir(ExprInt(offset, PC.size))
-        self.affect(offset, PC)
-        self.affect(self.add_ir(ExprInt(1, 8)), ExprId("status", 32))
+        self.assign(offset, PC)
+        self.assign(self.add_ir(ExprInt(1, 8)), ExprId("status", 32))
         self.set_ret(offset)
 
         builder.position_at_end(merge_block)
@@ -1277,8 +1292,14 @@ class LLVMFunction():
             self.printf("%.8X %s\n" % (instr_attrib.instr.offset,
                                        instr_attrib.instr.to_string(loc_db)))
 
-    def gen_post_code(self, attributes):
+    def gen_post_code(self, attributes, pc_value):
         if attributes.log_regs:
+            # Update PC for dump_gpregs
+            PC = self.llvm_context.PC
+            t_size = LLVMType.IntType(PC.size)
+            dst = self.builder.zext(t_size(pc_value), t_size)
+            self.assign(dst, PC)
+
             fc_ptr = self.mod.get_global(self.llvm_context.logging_func)
             self.builder.call(fc_ptr, [self.local_vars["vmcpu"]])
 
@@ -1338,8 +1359,10 @@ class LLVMFunction():
         # We are no longer in the main stream, deactivate cache
         self.main_stream = False
 
+        offset = None
         if isinstance(dst, ExprInt):
-            loc_key = self.llvm_context.ir_arch.loc_db.get_or_create_offset_location(int(dst))
+            offset = int(dst)
+            loc_key = self.llvm_context.ir_arch.loc_db.get_or_create_offset_location(offset)
             dst = ExprLoc(loc_key, dst.size)
 
         if isinstance(dst, ExprLoc):
@@ -1356,7 +1379,7 @@ class LLVMFunction():
                 if (offset in instr_offsets and
                     offset > attrib.instr.offset):
                     # forward local jump (ie. next instruction)
-                    self.gen_post_code(attrib)
+                    self.gen_post_code(attrib, offset)
                     self.gen_post_instr_checks(attrib, offset)
                     self.builder.branch(bbl)
                     return
@@ -1374,18 +1397,18 @@ class LLVMFunction():
         if dst.type.width != PC.size:
             dst = self.builder.zext(dst, LLVMType.IntType(PC.size))
 
-        self.gen_post_code(attrib)
-        self.affect(dst, PC)
+        self.gen_post_code(attrib, offset)
+        self.assign(dst, PC)
         self.gen_post_instr_checks(attrib, dst)
-        self.affect(self.add_ir(ExprInt(0, 8)), ExprId("status", 32))
+        self.assign(self.add_ir(ExprInt(0, 8)), ExprId("status", 32))
         self.set_ret(dst)
 
 
     def gen_irblock(self, instr_attrib, attributes, instr_offsets, irblock):
         """
         Generate the code for an @irblock
-        @instr_attrib: an Attributs instance or the instruction to translate
-        @attributes: list of Attributs corresponding to irblock assignments
+        @instr_attrib: an Attributes instance or the instruction to translate
+        @attributes: list of Attributes corresponding to irblock assignments
         @instr_offsets: offset of all asmblock's instructions
         @irblock: an irblock instance
         """
@@ -1420,7 +1443,7 @@ class LLVMFunction():
             # Update the memory
             for dst, src in values.iteritems():
                 if isinstance(dst, ExprMem):
-                    self.affect(src, dst)
+                    self.assign(src, dst)
 
             # Check memory write exception
             if attributes[index].mem_write:
@@ -1430,7 +1453,7 @@ class LLVMFunction():
             # Update registers values
             for dst, src in values.iteritems():
                 if not isinstance(dst, ExprMem):
-                    self.affect(src, dst)
+                    self.assign(src, dst)
 
             # Check post assignblk exception flags
             if attributes[index].set_exception:
@@ -1470,9 +1493,9 @@ class LLVMFunction():
         builder = self.builder
         m2_exception_flag = self.llvm_context.ir_arch.arch.regs.exception_flags
         t_size = LLVMType.IntType(m2_exception_flag.size)
-        self.affect(self.add_ir(ExprInt(1, 8)),
+        self.assign(self.add_ir(ExprInt(1, 8)),
                     ExprId("status", 32))
-        self.affect(t_size(m2_csts.EXCEPT_UNK_MNEMO),
+        self.assign(t_size(m2_csts.EXCEPT_UNK_MNEMO),
                     m2_exception_flag)
         offset = self.llvm_context.ir_arch.loc_db.get_location_offset(asmblock.loc_key)
         self.set_ret(LLVMType.IntType(64)(offset))
@@ -1489,7 +1512,7 @@ class LLVMFunction():
             builder.position_at_end(self.get_basic_block_by_loc_key(next_label))
 
             # Common code
-            self.affect(self.add_ir(ExprInt(0, 8)),
+            self.assign(self.add_ir(ExprInt(0, 8)),
                         ExprId("status", 32))
 
             # Check if IRDst has been set
@@ -1512,8 +1535,8 @@ class LLVMFunction():
             builder.position_at_end(then_block)
             PC = self.llvm_context.PC
             to_ret = self.add_ir(codegen.delay_slot_dst)
-            self.affect(to_ret, PC)
-            self.affect(self.add_ir(ExprInt(0, 8)),
+            self.assign(to_ret, PC)
+            self.assign(self.add_ir(ExprInt(0, 8)),
                         ExprId("status", 32))
             self.set_ret(to_ret)
 
@@ -1522,7 +1545,7 @@ class LLVMFunction():
             PC = self.llvm_context.PC
             next_label_offset = self.llvm_context.ir_arch.loc_db.get_location_offset(next_label)
             to_ret = LLVMType.IntType(PC.size)(next_label_offset)
-            self.affect(to_ret, PC)
+            self.assign(to_ret, PC)
             self.set_ret(to_ret)
 
     def from_asmblock(self, asmblock):
@@ -1595,7 +1618,7 @@ class LLVMFunction():
                 new_irblock = self.llvm_context.ir_arch.irbloc_fix_regs_for_mode(
                     irblock, self.llvm_context.ir_arch.attrib)
 
-                # Set the builder at the begining of the correct bbl
+                # Set the builder at the beginning of the correct bbl
                 self.builder.position_at_end(self.get_basic_block_by_loc_key(new_irblock.loc_key))
 
                 if index == 0:
@@ -1662,3 +1685,94 @@ class LLVMFunction():
         engine.finalize_object()
 
         return engine.get_function_address(self.fc.name)
+
+
+class LLVMFunction_IRCompilation(LLVMFunction):
+    """LLVMFunction made for IR export, in conjunction with
+    LLVMContext_IRCompilation.
+
+    This class offers only the basics, and decision must be made by the class
+    user on how actual registers, ABI, etc. are reflected
+
+
+    Example of use:
+    >>> context = LLVMContext_IRCompilation()
+    >>> context.ir_arch = ir
+    >>>
+    >>> func = LLVMFunction_IRCompilation(context, name="test")
+    >>> func.ret_type = llvm_ir.VoidType()
+    >>> func.init_fc()
+    >>>
+    >>> # Insert here function additional inits
+    >>> XX = func.builder.alloca(...)
+    >>> func.local_vars_pointers["EAX"] = XX
+    >>> #
+    >>>
+    >>> func.from_ircfg(ircfg)
+    """
+
+    def init_fc(self):
+        super(LLVMFunction_IRCompilation, self).init_fc()
+
+        # Create a global IRDst if not any
+        IRDst = self.llvm_context.ir_arch.IRDst
+        if str(IRDst) not in self.mod.globals:
+            llvm_ir.GlobalVariable(self.mod, LLVMType.IntType(IRDst.size),
+                                   name=str(IRDst))
+
+        # Create an 'exit' basic block, the final leave
+        self.exit_bbl = self.append_basic_block("exit")
+
+    def gen_jump2dst(self, _attrib, _instr_offsets, dst):
+        self.main_stream = False
+
+        if isinstance(dst, Expr):
+            if dst.is_int():
+                loc = self.llvm_context.ir_arch.loc_db.getby_offset_create(int(dst))
+                dst = ExprLoc(loc, dst.size)
+            assert dst.is_loc()
+            bbl = self.get_basic_block_by_loc_key(dst.loc_key)
+            if bbl is not None:
+                # "local" jump, inside this function
+                self.builder.branch(bbl)
+                return
+
+            # extern jump
+            dst = self.add_ir(dst)
+
+        # Emulate indirect jump with:
+        #   @IRDst = dst
+        #   goto exit
+        self.builder.store(dst, self.mod.get_global("IRDst"))
+        self.builder.branch(self.exit_bbl)
+
+    def gen_irblock(self, irblock):
+        instr_attrib = Attributes()
+        attributes = [Attributes() for _ in xrange(len(irblock.assignblks))]
+        instr_offsets = None
+        return super(LLVMFunction_IRCompilation, self).gen_irblock(
+            instr_attrib, attributes, instr_offsets, irblock
+        )
+
+    def from_ircfg(self, ircfg, append_ret=True):
+        # Create basic blocks
+        for loc_key, irblock in ircfg.blocks.iteritems():
+            self.append_basic_block(loc_key)
+
+        # Add IRBlocks
+        for label, irblock in ircfg.blocks.iteritems():
+            self.builder.position_at_end(self.get_basic_block_by_loc_key(label))
+            self.gen_irblock(irblock)
+
+        # Branch the entry BBL on the IRCFG head
+        self.builder.position_at_end(self.entry_bbl)
+        heads = ircfg.heads()
+        assert len(heads) == 1
+        starting_label = list(heads).pop()
+        self.builder.branch(self.get_basic_block_by_loc_key(starting_label))
+
+        # Returns with the builder on the exit block
+        self.builder.position_at_end(self.exit_bbl)
+
+        if append_ret:
+            self.builder.ret_void()

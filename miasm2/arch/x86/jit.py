@@ -1,7 +1,6 @@
 import logging
 
 from miasm2.jitter.jitload import Jitter, named_arguments
-from miasm2.core.utils import pck16, pck32, pck64, upck16, upck32, upck64
 from miasm2.arch.x86.sem import ir_x86_16, ir_x86_32, ir_x86_64
 from miasm2.jitter.codegen import CGen
 from miasm2.core.locationdb import LocationDB
@@ -21,16 +20,20 @@ class x86_32_CGen(CGen):
         self.translator = TranslatorC(self.ir_arch.loc_db)
         self.init_arch_C()
 
-    def gen_post_code(self, attrib):
+    def gen_post_code(self, attrib, pc_value):
         out = []
         if attrib.log_regs:
+            # Update PC for dump_gpregs
+            out.append("%s = %s;" % (self.C_PC, pc_value))
             out.append('dump_gpregs_32(jitcpu->cpu);')
         return out
 
 class x86_64_CGen(x86_32_CGen):
-    def gen_post_code(self, attrib):
+    def gen_post_code(self, attrib, pc_value):
         out = []
         if attrib.log_regs:
+            # Update PC for dump_gpregs
+            out.append("%s = %s;" % (self.C_PC, pc_value))
             out.append('dump_gpregs_64(jitcpu->cpu);')
         return out
 
@@ -51,15 +54,15 @@ class jitter_x86_16(Jitter):
 
     def push_uint16_t(self, value):
         self.cpu.SP -= self.ir_arch.sp.size / 8
-        self.vm.set_mem(self.cpu.SP, pck16(value))
+        self.vm.set_u16(self.cpu.SP, value)
 
     def pop_uint16_t(self):
-        value = upck16(self.vm.get_mem(self.cpu.SP, self.ir_arch.sp.size / 8))
+        value = self.vm.get_u16(self.cpu.SP)
         self.cpu.SP += self.ir_arch.sp.size / 8
         return value
 
     def get_stack_arg(self, index):
-        return upck16(self.vm.get_mem(self.cpu.SP + 4 * index, 4))
+        return self.vm.get_u16(self.cpu.SP + 4 * index)
 
     def init_run(self, *args, **kwargs):
         Jitter.init_run(self, *args, **kwargs)
@@ -84,24 +87,24 @@ class jitter_x86_32(Jitter):
 
     def push_uint16_t(self, value):
         self.cpu.ESP -= self.ir_arch.sp.size / 8
-        self.vm.set_mem(self.cpu.ESP, pck16(value))
+        self.vm.set_u16(self.cpu.ESP, value)
 
     def pop_uint16_t(self):
-        value = upck16(self.vm.get_mem(self.cpu.ESP, self.ir_arch.sp.size / 8))
+        value = self.vm.get_u16(self.cpu.ESP)
         self.cpu.ESP += self.ir_arch.sp.size / 8
         return value
 
     def push_uint32_t(self, value):
         self.cpu.ESP -= self.ir_arch.sp.size / 8
-        self.vm.set_mem(self.cpu.ESP, pck32(value))
+        self.vm.set_u32(self.cpu.ESP, value)
 
     def pop_uint32_t(self):
-        value = upck32(self.vm.get_mem(self.cpu.ESP, self.ir_arch.sp.size / 8))
+        value = self.vm.get_u32(self.cpu.ESP)
         self.cpu.ESP += self.ir_arch.sp.size / 8
         return value
 
     def get_stack_arg(self, index):
-        return upck32(self.vm.get_mem(self.cpu.ESP + 4 * index, 4))
+        return self.vm.get_u32(self.cpu.ESP + 4 * index)
 
     def init_run(self, *args, **kwargs):
         Jitter.init_run(self, *args, **kwargs)
@@ -200,15 +203,15 @@ class jitter_x86_64(Jitter):
 
     def push_uint64_t(self, value):
         self.cpu.RSP -= self.ir_arch.sp.size / 8
-        self.vm.set_mem(self.cpu.RSP, pck64(value))
+        self.vm.set_u64(self.cpu.RSP, value)
 
     def pop_uint64_t(self):
-        value = upck64(self.vm.get_mem(self.cpu.RSP, self.ir_arch.sp.size / 8))
+        value = self.vm.get_u64(self.cpu.RSP)
         self.cpu.RSP += self.ir_arch.sp.size / 8
         return value
 
     def get_stack_arg(self, index):
-        return upck64(self.vm.get_mem(self.cpu.RSP + 8 * index, 8))
+        return self.vm.get_u64(self.cpu.RSP + 8 * index)
 
     def init_run(self, *args, **kwargs):
         Jitter.init_run(self, *args, **kwargs)

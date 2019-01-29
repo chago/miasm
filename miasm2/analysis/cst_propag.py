@@ -26,8 +26,8 @@ def add_state(ircfg, todo, states, addr, state):
     """
     Add or merge the computed @state for the block at @addr. Update @todo
     @todo: modified block set
-    @states: dictionnary linking a label to its entering state.
-    @addr: address of the concidered block
+    @states: dictionary linking a label to its entering state.
+    @addr: address of the considered block
     @state: computed state
     """
     addr = ircfg.get_loc_key(addr)
@@ -52,9 +52,8 @@ def is_expr_cst(ir_arch, expr):
         if element.is_int():
             continue
         return False
-    else:
-        # Expr is a constant
-        return True
+    # Expr is a constant
+    return True
 
 
 class SymbExecStateFix(SymbolicExecutionEngine):
@@ -99,7 +98,7 @@ class SymbExecStateFix(SymbolicExecutionEngine):
             for dst, src in assignblk.iteritems():
                 src = self.propag_expr_cst(src)
                 if dst.is_mem():
-                    ptr = dst.arg
+                    ptr = dst.ptr
                     ptr = self.propag_expr_cst(ptr)
                     dst = ExprMem(ptr, dst.size)
                 new_assignblk[dst] = src
@@ -123,7 +122,7 @@ def compute_cst_propagation_states(ir_arch, ircfg, init_addr, init_infos):
 
     @ir_arch: IntermediateRepresentation instance
     @init_addr: analysis start address
-    @init_infos: dictionnary linking expressions to their values at @init_addr
+    @init_infos: dictionary linking expressions to their values at @init_addr
     """
 
     done = set()
@@ -170,7 +169,7 @@ def propagate_cst_expr(ir_arch, ircfg, addr, init_infos):
 
     @ir_arch: IntermediateRepresentation instance
     @addr: analysis start address
-    @init_infos: dictionnary linking expressions to their values at @init_addr
+    @init_infos: dictionary linking expressions to their values at @init_addr
 
     Returns a mapping between replaced Expression and their new values.
     """

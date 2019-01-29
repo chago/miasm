@@ -11,7 +11,7 @@
 
 reg_dict gpreg_dict[] = {
 #define JITCORE_PPC_REG_EXPAND(_name, _size)				\
-    { .name = #_name, .offset = offsetof(struct vm_cpu, _name) },
+    { .name = #_name, .offset = offsetof(struct vm_cpu, _name), .size = _size },
 #include "JitCore_ppc32_regs.h"
 #undef JITCORE_PPC_REG_EXPAND
 };
@@ -106,6 +106,12 @@ cpu_dump_gpregs(JitCpu *self, PyObject *args) {
 
     Py_INCREF(Py_None);
     return Py_None;
+}
+
+PyObject *
+cpu_dump_gpregs_with_attrib(JitCpu* self, PyObject* args)
+{
+	return cpu_dump_gpregs(self, args);
 }
 
 PyObject *
@@ -208,6 +214,7 @@ static PyMemberDef JitCpu_members[] = {
 static PyMethodDef JitCpu_methods[] = {
     {"init_regs", (PyCFunction)cpu_init_regs, METH_NOARGS, "X"},
     {"dump_gpregs", (PyCFunction)cpu_dump_gpregs, METH_NOARGS, "X"},
+    {"dump_gpregs_with_attrib", (PyCFunction)cpu_dump_gpregs_with_attrib, METH_VARARGS, "X"},
     {"get_gpreg", (PyCFunction)cpu_get_gpreg, METH_NOARGS, "X"},
     {"set_gpreg", (PyCFunction)cpu_set_gpreg, METH_VARARGS, "X"},
     {"get_exception", (PyCFunction)cpu_get_exception, METH_VARARGS, "X"},

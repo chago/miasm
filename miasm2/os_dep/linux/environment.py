@@ -243,7 +243,7 @@ class FileSystem(object):
         sb_path = self.resolve_path(path, follow_link=False)
         if not os.path.islink(sb_path):
             return None
-        return os.path.readlink(sb_path)
+        return os.readlink(sb_path)
 
     def statfs(self):
         return StatFSInfo(
@@ -322,7 +322,7 @@ class LinuxEnvironment(object):
     """A LinuxEnvironment regroups information to simulate a Linux-like
     environment"""
 
-    # To be overrided
+    # To be overridden
     platform_arch = None
 
     # User information
@@ -655,13 +655,13 @@ class AuxVec(object):
     AT_SYSINFO_EHDR = 33
 
     def __init__(self, elf_phdr_vaddr, entry_point, linux_env, **kwargs):
-        """Instanciate an AuxVec, with required elements:
+        """Instantiate an AuxVec, with required elements:
         - elf_phdr_vaddr: virtual address of the ELF's PHDR in memory
         - entry_point: virtual address of the ELF entry point
         - linux_env: LinuxEnvironment instance, used to provides some of the
           option values
 
-        Others options can be overrided by named arguments
+        Others options can be overridden by named arguments
 
         """
         self.info = {

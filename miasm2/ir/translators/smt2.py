@@ -47,7 +47,7 @@ class SMT2Mem(object):
         try:
             mem = self.mems[size]
         except KeyError:
-            # Lazy instanciation
+            # Lazy instantiation
             self.mems[size] = self.name + str(size)
             mem = self.mems[size]
         return mem
@@ -105,7 +105,7 @@ class TranslatorSMT2(Translator):
     expression. Memory is abstracted via SMT2Mem.
     The result of from_expr will be an SMT2 expression.
 
-    If you want to interract with the memory abstraction after the translation,
+    If you want to interact with the memory abstraction after the translation,
     you can instantiate your own SMT2Mem that will be equivalent to the one
     used by TranslatorSMT2.
 
@@ -149,11 +149,11 @@ class TranslatorSMT2(Translator):
         return bit_vec_val(str(offset), expr.size)
 
     def from_ExprMem(self, expr):
-        addr = self.from_expr(expr.arg)
+        addr = self.from_expr(expr.ptr)
         # size to read from memory
         size = expr.size
         # size of memory address
-        addr_size = expr.arg.size
+        addr_size = expr.ptr.size
         return self._mem.get(addr, size, addr_size)
 
     def from_ExprSlice(self, expr):
@@ -198,13 +198,13 @@ class TranslatorSMT2(Translator):
                     res = bvmul(res, arg)
                 elif expr.op == "/":
                     res = bvsdiv(res, arg)
-                elif expr.op == "idiv":
+                elif expr.op == "sdiv":
                     res = bvsdiv(res, arg)
                 elif expr.op == "udiv":
                     res = bvudiv(res, arg)
                 elif expr.op == "%":
                     res = bvsmod(res, arg)
-                elif expr.op == "imod":
+                elif expr.op == "smod":
                     res = bvsmod(res, arg)
                 elif expr.op == "umod":
                     res = bvurem(res, arg)
@@ -278,7 +278,7 @@ class TranslatorSMT2(Translator):
 
         return res
 
-    def from_ExprAff(self, expr):
+    def from_ExprAssign(self, expr):
         src = self.from_expr(expr.src)
         dst = self.from_expr(expr.dst)
         return smt2_assert(smt2_eq(src, dst))

@@ -13,48 +13,48 @@
 
 
 reg_dict gpreg_dict[] = {
-	{.name = "X0", .offset = offsetof(vm_cpu_t, X0)},
-	{.name = "X1", .offset = offsetof(vm_cpu_t, X1)},
-	{.name = "X2", .offset = offsetof(vm_cpu_t, X2)},
-	{.name = "X3", .offset = offsetof(vm_cpu_t, X3)},
-	{.name = "X4", .offset = offsetof(vm_cpu_t, X4)},
-	{.name = "X5", .offset = offsetof(vm_cpu_t, X5)},
-	{.name = "X6", .offset = offsetof(vm_cpu_t, X6)},
-	{.name = "X7", .offset = offsetof(vm_cpu_t, X7)},
-	{.name = "X8", .offset = offsetof(vm_cpu_t, X8)},
-	{.name = "X9", .offset = offsetof(vm_cpu_t, X9)},
-	{.name = "X10", .offset = offsetof(vm_cpu_t, X10)},
-	{.name = "X11", .offset = offsetof(vm_cpu_t, X11)},
-	{.name = "X12", .offset = offsetof(vm_cpu_t, X12)},
-	{.name = "X13", .offset = offsetof(vm_cpu_t, X13)},
-	{.name = "X14", .offset = offsetof(vm_cpu_t, X14)},
-	{.name = "X15", .offset = offsetof(vm_cpu_t, X15)},
-	{.name = "X16", .offset = offsetof(vm_cpu_t, X16)},
-	{.name = "X17", .offset = offsetof(vm_cpu_t, X17)},
-	{.name = "X18", .offset = offsetof(vm_cpu_t, X18)},
-	{.name = "X19", .offset = offsetof(vm_cpu_t, X19)},
-	{.name = "X20", .offset = offsetof(vm_cpu_t, X20)},
-	{.name = "X21", .offset = offsetof(vm_cpu_t, X21)},
-	{.name = "X22", .offset = offsetof(vm_cpu_t, X22)},
-	{.name = "X23", .offset = offsetof(vm_cpu_t, X23)},
-	{.name = "X24", .offset = offsetof(vm_cpu_t, X24)},
-	{.name = "X25", .offset = offsetof(vm_cpu_t, X25)},
-	{.name = "X26", .offset = offsetof(vm_cpu_t, X26)},
-	{.name = "X27", .offset = offsetof(vm_cpu_t, X27)},
-	{.name = "X28", .offset = offsetof(vm_cpu_t, X28)},
-	{.name = "X29", .offset = offsetof(vm_cpu_t, X29)},
-	{.name = "LR", .offset = offsetof(vm_cpu_t, LR)},
+	{.name = "X0", .offset = offsetof(vm_cpu_t, X0), .size = 64},
+	{.name = "X1", .offset = offsetof(vm_cpu_t, X1), .size = 64},
+	{.name = "X2", .offset = offsetof(vm_cpu_t, X2), .size = 64},
+	{.name = "X3", .offset = offsetof(vm_cpu_t, X3), .size = 64},
+	{.name = "X4", .offset = offsetof(vm_cpu_t, X4), .size = 64},
+	{.name = "X5", .offset = offsetof(vm_cpu_t, X5), .size = 64},
+	{.name = "X6", .offset = offsetof(vm_cpu_t, X6), .size = 64},
+	{.name = "X7", .offset = offsetof(vm_cpu_t, X7), .size = 64},
+	{.name = "X8", .offset = offsetof(vm_cpu_t, X8), .size = 64},
+	{.name = "X9", .offset = offsetof(vm_cpu_t, X9), .size = 64},
+	{.name = "X10", .offset = offsetof(vm_cpu_t, X10), .size = 64},
+	{.name = "X11", .offset = offsetof(vm_cpu_t, X11), .size = 64},
+	{.name = "X12", .offset = offsetof(vm_cpu_t, X12), .size = 64},
+	{.name = "X13", .offset = offsetof(vm_cpu_t, X13), .size = 64},
+	{.name = "X14", .offset = offsetof(vm_cpu_t, X14), .size = 64},
+	{.name = "X15", .offset = offsetof(vm_cpu_t, X15), .size = 64},
+	{.name = "X16", .offset = offsetof(vm_cpu_t, X16), .size = 64},
+	{.name = "X17", .offset = offsetof(vm_cpu_t, X17), .size = 64},
+	{.name = "X18", .offset = offsetof(vm_cpu_t, X18), .size = 64},
+	{.name = "X19", .offset = offsetof(vm_cpu_t, X19), .size = 64},
+	{.name = "X20", .offset = offsetof(vm_cpu_t, X20), .size = 64},
+	{.name = "X21", .offset = offsetof(vm_cpu_t, X21), .size = 64},
+	{.name = "X22", .offset = offsetof(vm_cpu_t, X22), .size = 64},
+	{.name = "X23", .offset = offsetof(vm_cpu_t, X23), .size = 64},
+	{.name = "X24", .offset = offsetof(vm_cpu_t, X24), .size = 64},
+	{.name = "X25", .offset = offsetof(vm_cpu_t, X25), .size = 64},
+	{.name = "X26", .offset = offsetof(vm_cpu_t, X26), .size = 64},
+	{.name = "X27", .offset = offsetof(vm_cpu_t, X27), .size = 64},
+	{.name = "X28", .offset = offsetof(vm_cpu_t, X28), .size = 64},
+	{.name = "X29", .offset = offsetof(vm_cpu_t, X29), .size = 64},
+	{.name = "LR", .offset = offsetof(vm_cpu_t, LR), .size = 64},
 
-	{.name = "SP", .offset = offsetof(vm_cpu_t, SP)},
-	{.name = "PC", .offset = offsetof(vm_cpu_t, PC)},
+	{.name = "SP", .offset = offsetof(vm_cpu_t, SP), .size = 64},
+	{.name = "PC", .offset = offsetof(vm_cpu_t, PC), .size = 64},
 
-	{.name = "zf", .offset = offsetof(vm_cpu_t, zf)},
-	{.name = "nf", .offset = offsetof(vm_cpu_t, nf)},
-	{.name = "of", .offset = offsetof(vm_cpu_t, of)},
-	{.name = "cf", .offset = offsetof(vm_cpu_t, cf)},
+	{.name = "zf", .offset = offsetof(vm_cpu_t, zf), .size = 8},
+	{.name = "nf", .offset = offsetof(vm_cpu_t, nf), .size = 8},
+	{.name = "of", .offset = offsetof(vm_cpu_t, of), .size = 8},
+	{.name = "cf", .offset = offsetof(vm_cpu_t, cf), .size = 8},
 
-	{.name = "exception_flags", .offset = offsetof(vm_cpu_t, exception_flags)},
-	{.name = "interrupt_num", .offset = offsetof(vm_cpu_t, interrupt_num)},
+	{.name = "exception_flags", .offset = offsetof(vm_cpu_t, exception_flags), .size = 32},
+	{.name = "interrupt_num", .offset = offsetof(vm_cpu_t, interrupt_num), .size = 32},
 
 };
 
@@ -141,8 +141,8 @@ PyObject* cpu_set_gpreg(JitCpu* self, PyObject *args)
 
 	    if (found)
 		    continue;
-	    fprintf(stderr, "unkown key: %s\n", PyString_AsString(d_key));
-	    RAISE(PyExc_ValueError, "unkown reg");
+	    fprintf(stderr, "unknown key: %s\n", PyString_AsString(d_key));
+	    RAISE(PyExc_ValueError, "unknown reg");
     }
     Py_INCREF(Py_None);
     return Py_None;
@@ -191,6 +191,12 @@ PyObject * cpu_dump_gpregs(JitCpu* self, PyObject* args)
 	dump_gpregs(vmcpu);
 	Py_INCREF(Py_None);
 	return Py_None;
+}
+
+
+PyObject * cpu_dump_gpregs_with_attrib(JitCpu* self, PyObject* args)
+{
+	return cpu_dump_gpregs(self, args);
 }
 
 
@@ -293,6 +299,8 @@ static PyMethodDef JitCpu_methods[] = {
 	{"init_regs", (PyCFunction)cpu_init_regs, METH_NOARGS,
 	 "X"},
 	{"dump_gpregs", (PyCFunction)cpu_dump_gpregs, METH_NOARGS,
+	 "X"},
+	{"dump_gpregs_with_attrib", (PyCFunction)cpu_dump_gpregs_with_attrib, METH_VARARGS,
 	 "X"},
 	{"get_gpreg", (PyCFunction)cpu_get_gpreg, METH_NOARGS,
 	 "X"},

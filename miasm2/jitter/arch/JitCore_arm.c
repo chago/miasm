@@ -12,35 +12,36 @@
 
 
 
-reg_dict gpreg_dict[] = { {.name = "R0", .offset = offsetof(vm_cpu_t, R0)},
-			  {.name = "R1", .offset = offsetof(vm_cpu_t, R1)},
-			  {.name = "R2", .offset = offsetof(vm_cpu_t, R2)},
-			  {.name = "R3", .offset = offsetof(vm_cpu_t, R3)},
-			  {.name = "R4", .offset = offsetof(vm_cpu_t, R4)},
-			  {.name = "R5", .offset = offsetof(vm_cpu_t, R5)},
-			  {.name = "R6", .offset = offsetof(vm_cpu_t, R6)},
-			  {.name = "R7", .offset = offsetof(vm_cpu_t, R7)},
-			  {.name = "R8", .offset = offsetof(vm_cpu_t, R8)},
-			  {.name = "R9", .offset = offsetof(vm_cpu_t, R9)},
-			  {.name = "R10", .offset = offsetof(vm_cpu_t, R10)},
-			  {.name = "R11", .offset = offsetof(vm_cpu_t, R11)},
-			  {.name = "R12", .offset = offsetof(vm_cpu_t, R12)},
-			  {.name = "SP", .offset = offsetof(vm_cpu_t, SP)},
-			  {.name = "LR", .offset = offsetof(vm_cpu_t, LR)},
-			  {.name = "PC", .offset = offsetof(vm_cpu_t, PC)},
+reg_dict gpreg_dict[] = {
+			 {.name = "R0", .offset = offsetof(vm_cpu_t, R0), .size = 32},
+			 {.name = "R1", .offset = offsetof(vm_cpu_t, R1), .size = 32},
+			 {.name = "R2", .offset = offsetof(vm_cpu_t, R2), .size = 32},
+			 {.name = "R3", .offset = offsetof(vm_cpu_t, R3), .size = 32},
+			 {.name = "R4", .offset = offsetof(vm_cpu_t, R4), .size = 32},
+			 {.name = "R5", .offset = offsetof(vm_cpu_t, R5), .size = 32},
+			 {.name = "R6", .offset = offsetof(vm_cpu_t, R6), .size = 32},
+			 {.name = "R7", .offset = offsetof(vm_cpu_t, R7), .size = 32},
+			 {.name = "R8", .offset = offsetof(vm_cpu_t, R8), .size = 32},
+			 {.name = "R9", .offset = offsetof(vm_cpu_t, R9), .size = 32},
+			 {.name = "R10", .offset = offsetof(vm_cpu_t, R10), .size = 32},
+			 {.name = "R11", .offset = offsetof(vm_cpu_t, R11), .size = 32},
+			 {.name = "R12", .offset = offsetof(vm_cpu_t, R12), .size = 32},
+			 {.name = "SP", .offset = offsetof(vm_cpu_t, SP), .size = 32},
+			 {.name = "LR", .offset = offsetof(vm_cpu_t, LR), .size = 32},
+			 {.name = "PC", .offset = offsetof(vm_cpu_t, PC), .size = 32},
 
-			  {.name = "zf", .offset = offsetof(vm_cpu_t, zf)},
-			  {.name = "nf", .offset = offsetof(vm_cpu_t, nf)},
-			  {.name = "of", .offset = offsetof(vm_cpu_t, of)},
-			  {.name = "cf", .offset = offsetof(vm_cpu_t, cf)},
+			 {.name = "zf", .offset = offsetof(vm_cpu_t, zf), .size = 8},
+			 {.name = "nf", .offset = offsetof(vm_cpu_t, nf), .size = 8},
+			 {.name = "of", .offset = offsetof(vm_cpu_t, of), .size = 8},
+			 {.name = "cf", .offset = offsetof(vm_cpu_t, cf), .size = 8},
 
-			  {.name = "ge0", .offset = offsetof(vm_cpu_t, ge0)},
-			  {.name = "ge1", .offset = offsetof(vm_cpu_t, ge1)},
-			  {.name = "ge2", .offset = offsetof(vm_cpu_t, ge2)},
-			  {.name = "ge3", .offset = offsetof(vm_cpu_t, ge3)},
+			 {.name = "ge0", .offset = offsetof(vm_cpu_t, ge0), .size = 8},
+			 {.name = "ge1", .offset = offsetof(vm_cpu_t, ge1), .size = 8},
+			 {.name = "ge2", .offset = offsetof(vm_cpu_t, ge2), .size = 8},
+			 {.name = "ge3", .offset = offsetof(vm_cpu_t, ge3), .size = 8},
 
-        {.name = "exception_flags", .offset = offsetof(vm_cpu_t, exception_flags)},
-        {.name = "interrupt_num", .offset = offsetof(vm_cpu_t, interrupt_num)},
+			 {.name = "exception_flags", .offset = offsetof(vm_cpu_t, exception_flags), .size = 32},
+			 {.name = "interrupt_num", .offset = offsetof(vm_cpu_t, interrupt_num), .size = 32},
 };
 
 /************************** JitCpu object **************************/
@@ -114,8 +115,8 @@ PyObject* cpu_set_gpreg(JitCpu* self, PyObject *args)
 
 	    if (found)
 		    continue;
-	    fprintf(stderr, "unkown key: %s\n", PyString_AsString(d_key));
-	    RAISE(PyExc_ValueError, "unkown reg");
+	    fprintf(stderr, "unknown key: %s\n", PyString_AsString(d_key));
+	    RAISE(PyExc_ValueError, "unknown reg");
     }
     Py_INCREF(Py_None);
     return Py_None;
@@ -154,6 +155,13 @@ PyObject * cpu_dump_gpregs(JitCpu* self, PyObject* args)
 	Py_INCREF(Py_None);
 	return Py_None;
 }
+
+
+PyObject * cpu_dump_gpregs_with_attrib(JitCpu* self, PyObject* args)
+{
+	return cpu_dump_gpregs(self, args);
+}
+
 
 
 PyObject* cpu_set_exception(JitCpu* self, PyObject* args)
@@ -274,6 +282,8 @@ static PyMethodDef JitCpu_methods[] = {
 	{"init_regs", (PyCFunction)cpu_init_regs, METH_NOARGS,
 	 "X"},
 	{"dump_gpregs", (PyCFunction)cpu_dump_gpregs, METH_NOARGS,
+	 "X"},
+	{"dump_gpregs_with_attrib", (PyCFunction)cpu_dump_gpregs_with_attrib, METH_VARARGS,
 	 "X"},
 	{"get_gpreg", (PyCFunction)cpu_get_gpreg, METH_NOARGS,
 	 "X"},

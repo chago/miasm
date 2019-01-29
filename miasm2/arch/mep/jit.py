@@ -43,11 +43,11 @@ class mep_CGen(CGen):
 
         return out
 
-    def gen_post_code(self, attrib):
+    def gen_post_code(self, attrib, pc_value):
         """Generate C code inserted after the current bloc"""
 
         # Call the base class method
-        out = super(mep_CGen, self).gen_post_code(attrib)
+        out = super(mep_CGen, self).gen_post_code(attrib, pc_value)
 
         # Implement the *REPEAT instructions logics
         tmp = r"""
@@ -91,14 +91,14 @@ class jitter_mepl(Jitter):
 
     def pop_uint16_t(self):
         regs = self.cpu.get_gpreg()
-        x = upck16(self.vm.get_mem(regs["SP"], 2))
+        x = self.vm.get_u16(regs["SP"])
         regs["SP"] += 2
         self.cpu.set_gpreg(regs)
         return x
 
     def get_stack_arg(self, n):
         regs = self.cpu.get_gpreg()
-        x = upck16(self.vm.get_mem(regs["SP"] + 2 * n, 2))
+        x = self.vm.get_u16(regs["SP"] + 2 * n)
         return x
 
     def init_run(self, *args, **kwargs):
